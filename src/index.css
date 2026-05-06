@@ -1,0 +1,523 @@
+@import "tailwindcss";
+
+/* ── AeroForge AI — Design System ─────────────────────────────────────────── */
+
+:root {
+  /* Core palette */
+  --af-bg-primary: #050810;
+  --af-bg-secondary: #080d1a;
+  --af-bg-card: #0c1428;
+  --af-bg-panel: #0f1832;
+  --af-bg-hover: #162040;
+
+  /* Brand colors */
+  --af-cyan: #00d4ff;
+  --af-cyan-dim: #0099bb;
+  --af-blue: #0066ff;
+  --af-blue-bright: #3385ff;
+  --af-violet: #7c3aed;
+  --af-violet-bright: #9f5ffb;
+  --af-green: #00ff88;
+  --af-green-dim: #00cc6a;
+  --af-amber: #ffaa00;
+  --af-red: #ff3b5c;
+  --af-orange: #ff6b2b;
+
+  /* Glassmorphism */
+  --af-glass: rgba(12, 20, 40, 0.8);
+  --af-glass-border: rgba(0, 212, 255, 0.12);
+  --af-glass-border-hover: rgba(0, 212, 255, 0.3);
+
+  /* Text */
+  --af-text-primary: #e8f4ff;
+  --af-text-secondary: #8ba8cc;
+  --af-text-muted: #4a6080;
+  --af-text-accent: #00d4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--af-bg-primary);
+  color: var(--af-text-primary);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--af-bg-secondary); }
+::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.5); }
+
+/* ── Glass Cards ───────────────────────────────────────────────────────────── */
+.af-glass-card {
+  background: var(--af-glass);
+  border: 1px solid var(--af-glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.af-glass-card:hover {
+  border-color: var(--af-glass-border-hover);
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.08);
+}
+
+/* ── Glow Effects ──────────────────────────────────────────────────────────── */
+.af-glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.25), 0 0 40px rgba(0, 212, 255, 0.1);
+}
+
+.af-glow-blue {
+  box-shadow: 0 0 20px rgba(0, 102, 255, 0.3), 0 0 40px rgba(0, 102, 255, 0.1);
+}
+
+.af-glow-green {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.25), 0 0 40px rgba(0, 255, 136, 0.1);
+}
+
+.af-glow-amber {
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.25), 0 0 40px rgba(255, 170, 0, 0.1);
+}
+
+/* ── Terminal / Code ───────────────────────────────────────────────────────── */
+.af-terminal {
+  background: rgba(2, 6, 14, 0.95);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #a8d8ff;
+}
+
+.af-terminal-header {
+  background: rgba(0, 212, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px 8px 0 0;
+}
+
+.af-terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ── Gradient Text ─────────────────────────────────────────────────────────── */
+.af-gradient-text {
+  background: linear-gradient(135deg, #00d4ff 0%, #0066ff 50%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.af-gradient-text-green {
+  background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Status Badges ─────────────────────────────────────────────────────────── */
+.af-badge-pass {
+  background: rgba(0, 255, 136, 0.12);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.af-badge-warn {
+  background: rgba(255, 170, 0, 0.12);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.25);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.af-badge-fail {
+  background: rgba(255, 59, 92, 0.12);
+  color: #ff3b5c;
+  border: 1px solid rgba(255, 59, 92, 0.25);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.af-badge-info {
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ── Progress Bar ──────────────────────────────────────────────────────────── */
+.af-progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.af-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #00d4ff, #0066ff);
+  transition: width 0.5s ease;
+}
+
+/* ── Animated Grid Background ──────────────────────────────────────────────── */
+.af-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Pulse Animation ───────────────────────────────────────────────────────── */
+@keyframes af-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes af-ping {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes af-flow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes af-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes af-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes af-counter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes af-typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.af-animate-pulse { animation: af-pulse 2s ease-in-out infinite; }
+.af-animate-ping { animation: af-ping 1.5s ease-out infinite; }
+.af-animate-rotate { animation: af-rotate 20s linear infinite; }
+.af-animate-counter { animation: af-counter 0.4s ease forwards; }
+
+/* ── Sidebar ───────────────────────────────────────────────────────────────── */
+.af-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: var(--af-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.af-sidebar-item:hover {
+  background: rgba(0, 212, 255, 0.06);
+  color: var(--af-text-primary);
+  border-color: rgba(0, 212, 255, 0.12);
+}
+
+.af-sidebar-item.active {
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--af-cyan);
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.af-btn-primary {
+  background: linear-gradient(135deg, #00d4ff, #0066ff);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.03em;
+}
+
+.af-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.35);
+}
+
+.af-btn-secondary {
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--af-cyan);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.af-btn-secondary:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.af-btn-danger {
+  background: rgba(255, 59, 92, 0.1);
+  color: #ff3b5c;
+  border: 1px solid rgba(255, 59, 92, 0.25);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.af-btn-danger:hover {
+  background: rgba(255, 59, 92, 0.2);
+  border-color: rgba(255, 59, 92, 0.5);
+}
+
+/* ── Input Fields ──────────────────────────────────────────────────────────── */
+.af-input {
+  background: rgba(8, 13, 26, 0.8);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 8px;
+  color: var(--af-text-primary);
+  padding: 10px 14px;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.af-input:focus {
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.08);
+}
+
+.af-input::placeholder {
+  color: var(--af-text-muted);
+}
+
+/* ── Tooltip ───────────────────────────────────────────────────────────────── */
+.af-tooltip {
+  position: relative;
+}
+
+.af-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 20, 40, 0.95);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--af-text-secondary);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* ── Separator ─────────────────────────────────────────────────────────────── */
+.af-separator {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.15), transparent);
+  margin: 16px 0;
+}
+
+/* ── Section Labels ────────────────────────────────────────────────────────── */
+.af-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--af-text-muted);
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+
+/* ── CAD Viewport Simulation ───────────────────────────────────────────────── */
+.af-cad-viewport {
+  background: radial-gradient(ellipse at center, rgba(0, 30, 60, 0.8) 0%, rgba(5, 8, 16, 0.95) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Scanline effect ───────────────────────────────────────────────────────── */
+.af-scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), transparent);
+  animation: af-scan 4s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Recharts custom styles ────────────────────────────────────────────────── */
+.recharts-text {
+  fill: #4a6080 !important;
+  font-size: 11px !important;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #4a6080 !important;
+}
+
+.recharts-legend-item-text {
+  color: #8ba8cc !important;
+  font-size: 11px !important;
+}
+
+/* ── Slider ────────────────────────────────────────────────────────────────── */
+.af-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 212, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+
+.af-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--af-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────────── */
+.af-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.af-table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--af-text-muted);
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.08);
+}
+
+.af-table td {
+  font-size: 12px;
+  color: var(--af-text-secondary);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.05);
+}
+
+.af-table tr:hover td {
+  background: rgba(0, 212, 255, 0.03);
+  color: var(--af-text-primary);
+}
+
+/* ── Geometry Visualization ─────────────────────────────────────────────────── */
+@keyframes wireframe-rotate {
+  0% { transform: rotateY(0deg) rotateX(15deg); }
+  100% { transform: rotateY(360deg) rotateX(15deg); }
+}
+
+.af-3d-container {
+  perspective: 800px;
+}
+
+.af-3d-object {
+  transform-style: preserve-3d;
+}
+
+/* Typing cursor */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.af-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--af-cyan);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* ── Notification dot ──────────────────────────────────────────────────────── */
+.af-dot-live {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--af-green);
+  position: relative;
+}
+
+.af-dot-live::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--af-green);
+  animation: af-ping 1.5s ease-out infinite;
+}
