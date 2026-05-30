@@ -1,0 +1,24 @@
+template:
+  id: naca_symmetric_fin
+  version: 1.0.0
+  name: Symmetric NACA Control Fin (00xx)
+  category: aerodynamic_surface/control_surface
+  builder: naca_airfoil
+  validated_against:
+    - "Abbott & von Doenhoff, Theory of Wing Sections"
+  parameters:
+    naca_code: {type: str, default: "0012"}
+    chord_m: {type: float, range: [0.02, 3.0], default: 0.3}
+    span_m: {type: float, range: [0.02, 4.0], default: 0.4}
+    n_points: {type: int, range: [40, 300], default: 100}
+  derived_quantities:
+    max_thickness_fraction: "parse_naca4(naca_code)[2]"
+    planform_area_m2: "chord_m * span_m"
+  constraints:
+    - "naca_code starts with 00 (symmetric)"
+  manufacturing_constraints:
+    min_trailing_edge_thickness_m: 0.0005
+  output_geometry:
+    components: [airfoil_section, spanwise_extrusion]
+    assembly_type: extrude
+    export_formats: [STEP, IGES, STL, BREP]

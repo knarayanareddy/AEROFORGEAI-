@@ -1,0 +1,71 @@
+{
+  "cep_version": "1.0",
+  "aeroforge_version": "0.1.0",
+  "package_id": "767b6827-46ee-4ec1-8465-508009eb3272",
+  "created_at": "2026-05-30T14:15:14.835677+00:00",
+  "geometry": {
+    "primary_file": "naca_airfoil.step",
+    "formats_available": [
+      "STEP",
+      "STL",
+      "IGES",
+      "BREP"
+    ],
+    "bounding_box_m": {
+      "x": 2.000286,
+      "y": 0.243176,
+      "z": 5.0
+    },
+    "volume_m3": 1.6454555263132318,
+    "surface_area_m2": 21.097076746643406,
+    "topology": {
+      "watertight": true,
+      "n_faces": 243,
+      "n_edges": 723,
+      "n_vertices": 482
+    }
+  },
+  "design_intent": {
+    "component_type": "naca_airfoil",
+    "geometry_family": "aerodynamic_surface",
+    "mach_design_point": null,
+    "flow_regime": "unknown",
+    "symmetry": "none"
+  },
+  "cfd_hints": {
+    "recommended_solver": "simpleFoam",
+    "flow_type": "incompressible_subsonic",
+    "turbulence_model": "k_omega_SST",
+    "wall_treatment": "low_Re_wall_functions",
+    "fluid": "air_ideal_gas",
+    "boundary_conditions": {
+      "inlet": {
+        "type": "velocity_inlet",
+        "mach": null
+      },
+      "outlet": {
+        "type": "pressure_outlet"
+      },
+      "walls": {
+        "type": "no_slip_adiabatic"
+      }
+    },
+    "mesh_hints": {
+      "target_y_plus": 1.0,
+      "shock_refinement_required": false,
+      "estimated_cell_count": "1M-5M"
+    }
+  },
+  "validation": {
+    "confidence_score": 1.0,
+    "all_stages_passed": true,
+    "warnings": [],
+    "design_report": "design_report.md"
+  },
+  "provenance": {
+    "physics_computations": [],
+    "llm_provider": "offline/heuristic",
+    "model": "rule-based",
+    "session_id": "session_42adf4f7"
+  }
+}

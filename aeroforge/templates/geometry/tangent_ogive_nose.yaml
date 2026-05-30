@@ -1,0 +1,25 @@
+template:
+  id: tangent_ogive_nose
+  version: 1.0.0
+  name: Tangent Ogive Nose Cone
+  category: aerodynamic_surface/nose_cone
+  builder: ogive
+  validated_against:
+    - "Chin, S.S., Missile Configuration Design"
+  parameters:
+    shape: {type: str, default: ogive}
+    base_radius_m: {type: float, range: [0.01, 1.5], default: 0.15}
+    length_m: {type: float, range: [0.02, 6.0], default: 0.9}
+    n_points: {type: int, range: [20, 200], default: 60}
+  derived_quantities:
+    fineness_ratio: "length_m / (2 * base_radius_m)"
+    ogive_radius_m: "(base_radius_m**2 + length_m**2) / (2 * base_radius_m)"
+  constraints:
+    - "fineness_ratio >= 0.5"
+    - "base_radius_m > 0"
+  manufacturing_constraints:
+    min_tip_radius_m: 0.0005
+  output_geometry:
+    components: [nose_cone_solid_of_revolution]
+    assembly_type: revolve
+    export_formats: [STEP, IGES, STL, BREP]

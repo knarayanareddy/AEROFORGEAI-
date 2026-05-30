@@ -1,0 +1,74 @@
+{
+  "cep_version": "1.0",
+  "aeroforge_version": "0.1.0",
+  "package_id": "e781fad9-1579-4983-9212-f16c7546de9a",
+  "created_at": "2026-05-30T14:15:18.144160+00:00",
+  "geometry": {
+    "primary_file": "supersonic_inlet.step",
+    "formats_available": [
+      "STEP",
+      "STL",
+      "IGES",
+      "BREP"
+    ],
+    "bounding_box_m": {
+      "x": 0.484403,
+      "y": 0.123494,
+      "z": 0.25
+    },
+    "volume_m3": 0.007167345302763311,
+    "surface_area_m2": 0.33431309936305376,
+    "topology": {
+      "watertight": true,
+      "n_faces": 6,
+      "n_edges": 12,
+      "n_vertices": 8
+    }
+  },
+  "design_intent": {
+    "component_type": "supersonic_inlet",
+    "geometry_family": "propulsion",
+    "mach_design_point": 2.5,
+    "flow_regime": "supersonic",
+    "symmetry": "planar"
+  },
+  "cfd_hints": {
+    "recommended_solver": "rhoCentralFoam",
+    "flow_type": "compressible_supersonic",
+    "turbulence_model": "k_omega_SST",
+    "wall_treatment": "low_Re_wall_functions",
+    "fluid": "air_ideal_gas",
+    "boundary_conditions": {
+      "inlet": {
+        "type": "supersonic_inlet",
+        "mach": 2.5
+      },
+      "outlet": {
+        "type": "pressure_outlet"
+      },
+      "walls": {
+        "type": "no_slip_adiabatic"
+      }
+    },
+    "mesh_hints": {
+      "target_y_plus": 1.0,
+      "shock_refinement_required": true,
+      "estimated_cell_count": "1M-5M"
+    }
+  },
+  "validation": {
+    "confidence_score": 1.0,
+    "all_stages_passed": true,
+    "warnings": [],
+    "design_report": "design_report.md"
+  },
+  "provenance": {
+    "physics_computations": [
+      "oblique_shock",
+      "oblique_shock"
+    ],
+    "llm_provider": "offline/heuristic",
+    "model": "rule-based",
+    "session_id": "session_e8032486"
+  }
+}

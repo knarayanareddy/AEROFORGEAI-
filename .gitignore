@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
+
+# AeroForge runtime output
+.aeroforge/audit.log
+out/
+*.step
+*.stp
+*.stl
+*.iges
+*.igs
+*.brep
+*.FCStd
+# (generated geometry is build output; committed examples keep only the text
+#  design_report.md and cep_manifest.json, which are not ignored)
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp

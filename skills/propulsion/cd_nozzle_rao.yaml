@@ -1,0 +1,16 @@
+skill:
+  name: cd_nozzle_rao
+  category: propulsion/nozzle
+  builder: cd_nozzle
+  description: >
+    Generate a Rao thrust-optimized (80%) bell nozzle from a throat radius and a
+    target exit Mach number. Produces a watertight wall solid of revolution.
+  default_params:
+    nozzle_type: bell
+    throat_radius_m: 0.05
+    exit_mach: 3.0
+    wall_thickness_m: 0.003
+  source: built-in
+  references:
+    - "Rao, G.V.R. (1958), Exhaust Nozzle Contour for Optimum Thrust"
+    - "Sutton & Biblarz, Rocket Propulsion Elements"

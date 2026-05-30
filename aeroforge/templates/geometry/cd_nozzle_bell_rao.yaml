@@ -1,0 +1,25 @@
+template:
+  id: cd_nozzle_bell_rao
+  version: 1.0.0
+  name: Rao Thrust-Optimized Bell Nozzle (80%)
+  category: propulsion/nozzle
+  builder: cd_nozzle
+  validated_against:
+    - "Rao, G.V.R., 'Exhaust Nozzle Contour for Optimum Thrust' (1958)"
+    - "Sutton & Biblarz, Rocket Propulsion Elements"
+  parameters:
+    throat_radius_m: {type: float, range: [0.005, 1.0], default: 0.05}
+    exit_mach: {type: float, range: [1.5, 6.0], default: 3.0}
+    nozzle_type: {type: str, default: bell}
+    wall_thickness_m: {type: float, range: [0.001, 0.05], default: 0.003}
+  derived_quantities:
+    expansion_ratio: "isentropic.area_mach_ratio(exit_mach)"
+    length_fraction_of_cone: 0.8
+  constraints:
+    - "exit_mach > 1.0"
+  manufacturing_constraints:
+    min_wall_thickness_m: 0.001
+  output_geometry:
+    components: [nozzle_wall_solid_of_revolution]
+    assembly_type: revolve_cut
+    export_formats: [STEP, IGES, STL, BREP]

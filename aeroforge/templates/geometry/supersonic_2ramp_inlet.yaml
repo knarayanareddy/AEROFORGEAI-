@@ -1,0 +1,65 @@
+template:
+  id: supersonic_2ramp_inlet
+  version: 1.2.0
+  name: 2D Two-Ramp External Compression Inlet
+  category: propulsion/intake
+  builder: supersonic_inlet
+  validated_against:
+    - "NASA TN D-4112"
+    - "AIAA 1990-0474"
+
+  parameters:
+    mach_design:
+      type: float
+      range: [1.5, 4.0]
+      default: 2.5
+      description: "Design Mach number"
+    ramp1_angle_deg:
+      type: float
+      range: [5.0, 15.0]
+      computed_from: "oblique_shock.optimal_ramp_angles_for_recovery(mach_design, 2)[0]"
+      overridable: true
+    ramp2_angle_deg:
+      type: float
+      range: [10.0, 25.0]
+      computed_from: "oblique_shock.optimal_ramp_angles_for_recovery(mach_design, 2)[1]"
+      overridable: true
+    ramp1_length_m:
+      type: float
+      range: [0.05, 2.0]
+      default: 0.30
+    ramp2_length_m:
+      type: float
+      range: [0.05, 2.0]
+      default: 0.20
+    width_m:
+      type: float
+      range: [0.05, 1.5]
+      default: 0.25
+    contraction_ratio:
+      type: float
+      range: [3.0, 10.0]
+      default: 5.0
+      description: "Duct area ratio from cowl lip to throat"
+
+  derived_quantities:
+    total_pressure_recovery:
+      formula: "oblique_shock.total_pressure_recovery(mach_design, [ramp1_angle_deg, ramp2_angle_deg])"
+    total_turn_deg:
+      formula: "ramp1_angle_deg + ramp2_angle_deg"
+
+  constraints:
+    - "ramp2_angle_deg > ramp1_angle_deg"
+    - "total_pressure_recovery >= 0.80"
+    - "contraction_ratio <= 10.0"
+    - "mach_design <= 4.0"
+
+  manufacturing_constraints:
+    min_wall_thickness_m: 0.003
+    min_radius_m: 0.001
+    max_aspect_ratio: 20.0
+
+  output_geometry:
+    components: [ramp_body, compression_surface, sidewall_extrusion]
+    assembly_type: extrude
+    export_formats: [STEP, IGES, STL, BREP]

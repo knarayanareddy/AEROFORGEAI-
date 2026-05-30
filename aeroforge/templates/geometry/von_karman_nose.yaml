@@ -1,0 +1,23 @@
+template:
+  id: von_karman_nose
+  version: 1.0.0
+  name: Von Karman (LD-Haack) Minimum-Drag Nose
+  category: aerodynamic_surface/nose_cone
+  builder: ogive
+  validated_against:
+    - "Haack, W., 'Geschossformen kleinsten Wellenwiderstandes' (1941)"
+  parameters:
+    shape: {type: str, default: von_karman}
+    base_radius_m: {type: float, range: [0.01, 1.5], default: 0.15}
+    length_m: {type: float, range: [0.05, 6.0], default: 1.2}
+    n_points: {type: int, range: [20, 200], default: 80}
+  derived_quantities:
+    fineness_ratio: "length_m / (2 * base_radius_m)"
+  constraints:
+    - "fineness_ratio >= 1.0"
+  manufacturing_constraints:
+    min_tip_radius_m: 0.0005
+  output_geometry:
+    components: [nose_cone_solid_of_revolution]
+    assembly_type: revolve
+    export_formats: [STEP, IGES, STL, BREP]

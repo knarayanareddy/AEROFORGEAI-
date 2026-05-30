@@ -1,0 +1,24 @@
+template:
+  id: min_length_nozzle
+  version: 1.0.0
+  name: Minimum-Length Nozzle (MOC-anchored)
+  category: propulsion/nozzle
+  builder: cd_nozzle
+  validated_against:
+    - "Anderson, Modern Compressible Flow, Ch. 11"
+  parameters:
+    throat_radius_m: {type: float, range: [0.005, 1.0], default: 0.05}
+    exit_mach: {type: float, range: [1.5, 6.0], default: 2.8}
+    nozzle_type: {type: str, default: min_length}
+    wall_thickness_m: {type: float, range: [0.001, 0.05], default: 0.003}
+  derived_quantities:
+    initial_wall_angle_deg: "prandtl_meyer.nu_deg(exit_mach) / 2"
+    expansion_ratio: "isentropic.area_mach_ratio(exit_mach)"
+  constraints:
+    - "exit_mach > 1.0"
+  manufacturing_constraints:
+    min_wall_thickness_m: 0.001
+  output_geometry:
+    components: [nozzle_wall_solid_of_revolution]
+    assembly_type: revolve_cut
+    export_formats: [STEP, IGES, STL, BREP]
