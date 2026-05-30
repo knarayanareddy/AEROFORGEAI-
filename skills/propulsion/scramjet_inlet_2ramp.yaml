@@ -1,0 +1,16 @@
+skill:
+  name: scramjet_inlet_2ramp
+  category: propulsion/intake
+  builder: supersonic_inlet
+  description: >
+    Generate a two-ramp external-compression inlet. Ramp angles default to the
+    optimal (equal-strength shock) values computed for the design Mach number;
+    override them to explore off-optimum designs.
+  default_params:
+    ramp1_length_m: 0.45
+    ramp2_length_m: 0.30
+    width_m: 0.30
+  source: built-in
+  references:
+    - "NASA TN D-4112"
+    - "Heiser & Pratt, Hypersonic Airbreathing Propulsion"

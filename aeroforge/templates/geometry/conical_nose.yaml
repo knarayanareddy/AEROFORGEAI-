@@ -1,0 +1,24 @@
+template:
+  id: conical_nose
+  version: 1.0.0
+  name: Straight Conical Nose
+  category: aerodynamic_surface/nose_cone
+  builder: ogive
+  validated_against:
+    - "USAF DATCOM"
+  parameters:
+    shape: {type: str, default: conical}
+    base_radius_m: {type: float, range: [0.01, 1.5], default: 0.12}
+    length_m: {type: float, range: [0.02, 5.0], default: 0.6}
+    n_points: {type: int, range: [10, 120], default: 40}
+  derived_quantities:
+    half_angle_deg: "degrees(atan(base_radius_m / length_m))"
+    fineness_ratio: "length_m / (2 * base_radius_m)"
+  constraints:
+    - "base_radius_m > 0"
+  manufacturing_constraints:
+    min_tip_radius_m: 0.0005
+  output_geometry:
+    components: [nose_cone_solid_of_revolution]
+    assembly_type: revolve
+    export_formats: [STEP, IGES, STL, BREP]

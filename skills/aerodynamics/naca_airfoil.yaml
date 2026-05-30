@@ -1,0 +1,15 @@
+skill:
+  name: naca_airfoil
+  category: aerodynamic_surface/airfoil
+  builder: naca_airfoil
+  description: >
+    Generate a NACA 4-digit airfoil wing section extruded over a span. Accepts a
+    NACA code, chord, and span in SI units.
+  default_params:
+    naca_code: "2412"
+    chord_m: 1.0
+    span_m: 1.0
+    n_points: 120
+  source: built-in
+  references:
+    - "Abbott & von Doenhoff, Theory of Wing Sections"

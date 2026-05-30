@@ -1,0 +1,12 @@
+skill:
+  name: supersonic_inlet_rhoSimpleFoam
+  regime: supersonic
+  solver: rhoSimpleFoam
+  turbulence_model: kOmegaSST
+  settings:
+    wall_treatment: low_Re
+    target_yplus: 1.0
+    div_scheme: "Gauss Minmod"
+    relaxation_p: 0.3
+    notes: "Shock-robust steady compressible setup validated for 2-ramp inlets."
+  source: built-in

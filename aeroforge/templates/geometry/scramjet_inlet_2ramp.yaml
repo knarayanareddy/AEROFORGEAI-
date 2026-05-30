@@ -1,0 +1,30 @@
+template:
+  id: scramjet_inlet_2ramp
+  version: 1.0.0
+  name: Hypersonic 2-Ramp Inlet (Scramjet, conceptual)
+  category: propulsion/intake
+  builder: supersonic_inlet
+  validated_against:
+    - "NASA TM-2004-213163"
+    - "Heiser & Pratt, Hypersonic Airbreathing Propulsion"
+  parameters:
+    mach_design: {type: float, range: [4.0, 8.0], default: 6.0}
+    ramp1_angle_deg: {type: float, range: [6.0, 12.0], default: 8.0}
+    ramp2_angle_deg: {type: float, range: [10.0, 18.0], default: 12.0}
+    ramp1_length_m: {type: float, range: [0.1, 2.0], default: 0.45}
+    ramp2_length_m: {type: float, range: [0.1, 2.0], default: 0.30}
+    width_m: {type: float, range: [0.05, 1.0], default: 0.30}
+  derived_quantities:
+    total_pressure_recovery:
+      formula: "oblique_shock.total_pressure_recovery(mach_design, [ramp1_angle_deg, ramp2_angle_deg])"
+    total_turn_deg: "ramp1_angle_deg + ramp2_angle_deg"
+  constraints:
+    - "ramp2_angle_deg > ramp1_angle_deg"
+    - "mach_design >= 4.0"
+  manufacturing_constraints:
+    min_wall_thickness_m: 0.003
+    min_leading_edge_radius_m: 0.0005
+  output_geometry:
+    components: [ramp_body, compression_surface, sidewall_extrusion]
+    assembly_type: extrude
+    export_formats: [STEP, IGES, STL, BREP]

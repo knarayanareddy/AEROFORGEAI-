@@ -1,0 +1,47 @@
+template:
+  id: naca4_airfoil
+  version: 1.0.0
+  name: NACA 4-Digit Airfoil
+  category: aerodynamic_surface/airfoil
+  builder: naca_airfoil
+  validated_against:
+    - "Abbott & von Doenhoff, Theory of Wing Sections"
+    - "NACA Report 460"
+
+  parameters:
+    naca_code:
+      type: str
+      default: "2412"
+      description: "4-digit NACA designation (max camber, camber pos, thickness)"
+    chord_m:
+      type: float
+      range: [0.05, 10.0]
+      default: 1.0
+      description: "Airfoil chord length (m)"
+    span_m:
+      type: float
+      range: [0.05, 80.0]
+      default: 1.0
+      description: "Spanwise extrusion length (m)"
+    n_points:
+      type: int
+      range: [40, 400]
+      default: 120
+      description: "Points per surface (cosine spacing)"
+
+  derived_quantities:
+    max_thickness_fraction: "parse_naca4(naca_code)[2]"
+    planform_area_m2: "chord_m * span_m"
+
+  constraints:
+    - "0.01 <= max_thickness_fraction <= 0.40"
+    - "chord_m > 0"
+    - "span_m > 0"
+
+  manufacturing_constraints:
+    min_trailing_edge_thickness_m: 0.0005
+
+  output_geometry:
+    components: [airfoil_section, spanwise_extrusion]
+    assembly_type: extrude
+    export_formats: [STEP, IGES, STL, BREP]

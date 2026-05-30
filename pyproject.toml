@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aeroforge-core"
+version = "0.1.0"
+description = "AeroForge AI — natural-language aerospace CAD (Phase 1) + CFD automation (Phase 2)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "AeroForge AI" }]
+keywords = ["aerospace", "cad", "cfd", "propulsion", "ai-agent", "freecad", "cadquery"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+# Core dependencies are pure-Python / always-installable. The heavy CAD kernel
+# (cadquery + OpenCASCADE) and cloud LLM SDKs are optional extras so the package
+# imports and the physics/agent layers run even where the kernel is unavailable.
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pyyaml>=6.0",
+    "pydantic>=2.5",
+    "networkx>=3.0",
+    "click>=8.1",
+    "rich>=13.0",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+cad = ["cadquery>=2.4"]
+cfd = ["gmsh>=4.11", "meshio>=5.3"]
+web = ["fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.27"]
+llm = ["anthropic>=0.39", "openai>=1.40", "httpx>=0.27"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "black>=24.0",
+    "isort>=5.13",
+    "mypy>=1.8",
+]
+all = ["aeroforge-core[cad,cfd,web,llm,dev]"]
+
+[project.scripts]
+aeroforge = "aeroforge.cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/knarayanareddy/AEROFORGEAI-"
+Documentation = "https://github.com/knarayanareddy/AEROFORGEAI-/tree/main/docs"
+Repository = "https://github.com/knarayanareddy/AEROFORGEAI-"
+
+[tool.setuptools.packages.find]
+include = ["aeroforge*"]
+
+[tool.setuptools.package-data]
+aeroforge = [
+    "templates/geometry/*.yaml",
+    "templates/freecad/*.py",
+    "py.typed",
+    "cfd/templates/openfoam/*",
+    "cfd/templates/su2/*",
+    "cfd/templates/slurm/*",
+    "platform/web/*",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "cad: tests that require the CadQuery/OpenCASCADE kernel",
+    "integration: end-to-end pipeline tests",
+]
+
+[tool.coverage.run]
+source = ["aeroforge"]
+omit = ["aeroforge/adapters/fusion360_adapter.py", "aeroforge/adapters/onshape_adapter.py"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+ignore_missing_imports = true
