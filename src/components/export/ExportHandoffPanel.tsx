@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Download, Package, FileText, GitBranch, CheckCircle, Shield, Zap } from 'lucide-react';
 
 const EXPORT_FORMATS = [
@@ -68,6 +68,12 @@ const ExportHandoffPanel: React.FC = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'formats' | 'cep' | 'itar'>('formats');
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear any pending download timers on unmount.
+  useEffect(() => () => {
+    timersRef.current.forEach(clearTimeout);
+  }, []);
 
   const toggleFormat = (id: string) => {
     setSelectedFormats(prev =>
@@ -76,11 +82,13 @@ const ExportHandoffPanel: React.FC = () => {
   };
 
   const handleDownload = (id: string) => {
+    if (downloading === id) return;
     setDownloading(id);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setDownloading(null);
-      setDownloaded(prev => [...prev, id]);
+      setDownloaded(prev => (prev.includes(id) ? prev : [...prev, id]));
     }, 1200);
+    timersRef.current.push(timer);
   };
 
   const handleBundleExport = () => {
@@ -97,7 +105,7 @@ const ExportHandoffPanel: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold af-gradient-text">Export & Handoff</h2>
-          <p className="text-xs" style={{ color: '#4a6080' }}>
+          <p className="text-xs" style={{ color: '#7688a6' }}>
             STEP · IGES · STL · OpenFOAM · CEP Protocol · Design Report · ITAR/EAR compliant
           </p>
         </div>
@@ -151,7 +159,7 @@ const ExportHandoffPanel: React.FC = () => {
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className="flex items-center gap-1.5 px-5 py-3 text-xs font-semibold transition-colors"
               style={{
-                color: activeTab === tab.id ? '#00d4ff' : '#4a6080',
+                color: activeTab === tab.id ? '#00d4ff' : '#7688a6',
                 borderBottom: activeTab === tab.id ? '2px solid #00d4ff' : '2px solid transparent',
                 background: activeTab === tab.id ? 'rgba(0,212,255,0.05)' : 'transparent',
               }}
@@ -181,13 +189,23 @@ const ExportHandoffPanel: React.FC = () => {
                             background: isSelected ? `${fmt.color}08` : 'rgba(0,0,0,0.2)',
                             border: `1px solid ${isSelected ? `${fmt.color}25` : 'rgba(0,212,255,0.05)'}`,
                           }}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelected}
+                          aria-label={`Toggle ${fmt.label} export`}
                           onClick={() => toggleFormat(fmt.id)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleFormat(fmt.id);
+                            }
+                          }}
                         >
                           {/* Checkbox */}
                           <div
                             className="w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center"
                             style={{
-                              borderColor: isSelected ? fmt.color : '#4a6080',
+                              borderColor: isSelected ? fmt.color : '#7688a6',
                               background: isSelected ? fmt.color : 'transparent',
                             }}
                           >
@@ -198,16 +216,17 @@ const ExportHandoffPanel: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold font-mono" style={{ color: fmt.color }}>{fmt.label}</span>
-                              <span className="text-xs" style={{ color: '#4a6080' }}>{fmt.ext}</span>
+                              <span className="text-xs" style={{ color: '#7688a6' }}>{fmt.ext}</span>
                             </div>
-                            <div className="text-xs mt-0.5" style={{ color: '#4a6080', fontSize: '10px' }}>{fmt.desc}</div>
+                            <div className="text-xs mt-0.5" style={{ color: '#7688a6', fontSize: '10px' }}>{fmt.desc}</div>
                           </div>
 
                           {/* Size + download */}
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-xs" style={{ color: '#4a6080' }}>{fmt.size}</span>
+                            <span className="text-xs" style={{ color: '#7688a6' }}>{fmt.size}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDownload(fmt.id); }}
+                              aria-label={`Download ${fmt.label}`}
                               className="p-1.5 rounded-lg transition-all"
                               style={{
                                 background: isDone ? 'rgba(0,255,136,0.12)' : `${fmt.color}12`,
@@ -244,21 +263,19 @@ const ExportHandoffPanel: React.FC = () => {
                   <div className="af-terminal-dot" style={{ background: '#ff5f57' }} />
                   <div className="af-terminal-dot" style={{ background: '#febc2e' }} />
                   <div className="af-terminal-dot" style={{ background: '#28c840' }} />
-                  <span className="text-xs ml-2" style={{ color: '#4a6080' }}>CEP manifest · scramjet_inlet_M5p5_cep_v1.json</span>
+                  <span className="text-xs ml-2" style={{ color: '#7688a6' }}>CEP manifest · scramjet_inlet_M5p5_cep_v1.json</span>
                 </div>
-                <div className="p-4">
-                  <pre className="text-xs overflow-x-auto" style={{ color: '#a8d8ff', lineHeight: 1.8 }}>
-{JSON.stringify(CEP_MANIFEST, null, 2)
-  .split('\n')
-  .map(line => {
-    if (line.includes(':')) {
-      const [key, ...rest] = line.split(':');
-      return `${key}: <span style="color:#00ff88">${rest.join(':')}</span>`;
-    }
-    return line;
-  })
-  .join('\n')}
-                  </pre>
+                <div className="p-4 font-mono text-xs overflow-x-auto" style={{ lineHeight: 1.8 }}>
+                  <div style={{ color: '#a8d8ff' }}>{'{'}</div>
+                  {Object.entries(CEP_MANIFEST).map(([key, value], i, arr) => (
+                    <div key={key} style={{ color: '#a8d8ff', paddingLeft: '1.5em' }}>
+                      <span style={{ color: '#9f5ffb' }}>{JSON.stringify(key)}</span>
+                      <span>: </span>
+                      <span style={{ color: '#00ff88' }}>{JSON.stringify(value)}</span>
+                      {i < arr.length - 1 ? ',' : ''}
+                    </div>
+                  ))}
+                  <div style={{ color: '#a8d8ff' }}>{'}'}</div>
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
@@ -299,10 +316,10 @@ const ExportHandoffPanel: React.FC = () => {
                 style={{ background: `${step.color}08`, border: `1px solid ${step.color}20`, minWidth: '90px' }}
               >
                 <div className="text-xs font-semibold" style={{ color: step.color }}>{step.label}</div>
-                <div className="text-xs mt-0.5" style={{ color: '#4a6080', fontSize: '10px' }}>{step.detail}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#7688a6', fontSize: '10px' }}>{step.detail}</div>
               </div>
               {i < 6 && (
-                <div className="text-sm" style={{ color: '#4a6080' }}>→</div>
+                <div className="text-sm" style={{ color: '#7688a6' }}>→</div>
               )}
             </React.Fragment>
           ))}

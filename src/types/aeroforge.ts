@@ -145,6 +145,18 @@ export interface KnowledgeGraphNode {
   properties: Record<string, string | number>;
 }
 
+export interface DesignLibraryItem {
+  id: string;
+  name: string;
+  type: string;
+  machRange: string;
+  status: 'validated' | 'in-review';
+  eta_p: number;
+  tags: string[];
+  created: string;
+  version: string;
+}
+
 export interface NavigationItem {
   id: string;
   label: string;

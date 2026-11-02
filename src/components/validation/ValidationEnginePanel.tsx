@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckSquare, Shield, AlertTriangle, CheckCircle, XCircle, TrendingUp, BookOpen } from 'lucide-react';
 import { SCRAMJET_INLET_VALIDATION, SCRAMJET_INLET_PHYSICS } from '../../data/aeroforgeSimulationData';
+import { computeValidationScore } from '../../utils/design';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 
 const COMPLIANCE_MATRIX = [
@@ -45,25 +46,33 @@ const ValidationEnginePanel: React.FC = () => {
   const [activeStandard, setActiveStandard] = useState(0);
   const [runningCheck, setRunningCheck] = useState(false);
   const [checkResults, setCheckResults] = useState<Record<string, 'pass' | 'warn' | 'fail' | 'pending'>>({});
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear any pending validation timers on unmount.
+  useEffect(() => () => {
+    timersRef.current.forEach(clearTimeout);
+  }, []);
 
   const handleRunValidation = () => {
+    if (runningCheck) return;
     setRunningCheck(true);
     const results: Record<string, 'pass' | 'warn' | 'fail' | 'pending'> = {};
     SCRAMJET_INLET_VALIDATION.forEach(v => { results[v.id] = 'pending'; });
     setCheckResults(results);
 
     SCRAMJET_INLET_VALIDATION.forEach((v, i) => {
-      setTimeout(() => {
-        setCheckResults(prev => ({ ...prev, [v.id]: v.status as 'pass' | 'warn' | 'fail' | 'pending' }));
+      const id = setTimeout(() => {
+        setCheckResults(prev => ({ ...prev, [v.id]: v.status }));
         if (i === SCRAMJET_INLET_VALIDATION.length - 1) setRunningCheck(false);
       }, (i + 1) * 300);
+      timersRef.current.push(id);
     });
   };
 
   const passCount = SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'pass').length;
   const warnCount = SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'warn').length;
   const failCount = SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'fail').length;
-  const overallScore = ((passCount + warnCount * 0.5) / SCRAMJET_INLET_VALIDATION.length * 100).toFixed(0);
+  const overallScore = computeValidationScore(SCRAMJET_INLET_VALIDATION);
 
   return (
     <div className="space-y-4">
@@ -71,7 +80,7 @@ const ValidationEnginePanel: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold af-gradient-text">Validation & Constraint Engine</h2>
-          <p className="text-xs" style={{ color: '#4a6080' }}>
+          <p className="text-xs" style={{ color: '#7688a6' }}>
             Physics constraints · AIAA standards · MIL-SPEC compliance · AS9100D · FAA/EASA
           </p>
         </div>
@@ -89,28 +98,28 @@ const ValidationEnginePanel: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="af-glass-card p-4 text-center" style={{ border: '1px solid rgba(0,255,136,0.2)' }}>
           <div className="text-2xl font-bold" style={{ color: '#00ff88' }}>{overallScore}%</div>
-          <div className="text-xs mt-1" style={{ color: '#4a6080' }}>Overall Score</div>
+          <div className="text-xs mt-1" style={{ color: '#7688a6' }}>Overall Score</div>
           <div className="af-progress-bar mt-2">
             <div className="af-progress-fill" style={{ width: `${overallScore}%`, background: '#00ff88' }} />
           </div>
         </div>
         <div className="af-glass-card p-4 text-center" style={{ border: '1px solid rgba(0,255,136,0.15)' }}>
           <div className="text-2xl font-bold" style={{ color: '#00ff88' }}>{passCount}</div>
-          <div className="text-xs mt-1" style={{ color: '#4a6080' }}>Checks PASS</div>
+          <div className="text-xs mt-1" style={{ color: '#7688a6' }}>Checks PASS</div>
           <div className="flex justify-center mt-1">
             <CheckCircle size={16} style={{ color: '#00ff88' }} />
           </div>
         </div>
         <div className="af-glass-card p-4 text-center" style={{ border: '1px solid rgba(255,170,0,0.15)' }}>
           <div className="text-2xl font-bold" style={{ color: '#ffaa00' }}>{warnCount}</div>
-          <div className="text-xs mt-1" style={{ color: '#4a6080' }}>Checks WARN</div>
+          <div className="text-xs mt-1" style={{ color: '#7688a6' }}>Checks WARN</div>
           <div className="flex justify-center mt-1">
             <AlertTriangle size={16} style={{ color: '#ffaa00' }} />
           </div>
         </div>
         <div className="af-glass-card p-4 text-center" style={{ border: '1px solid rgba(255,59,92,0.15)' }}>
           <div className="text-2xl font-bold" style={{ color: '#ff3b5c' }}>{failCount}</div>
-          <div className="text-xs mt-1" style={{ color: '#4a6080' }}>Checks FAIL</div>
+          <div className="text-xs mt-1" style={{ color: '#7688a6' }}>Checks FAIL</div>
           <div className="flex justify-center mt-1">
             <XCircle size={16} style={{ color: '#ff3b5c' }} />
           </div>
@@ -129,7 +138,7 @@ const ValidationEnginePanel: React.FC = () => {
             <div className="space-y-2">
               {SCRAMJET_INLET_VALIDATION.map((v, i) => {
                 const status = checkResults[v.id] ?? v.status;
-                const colors = { pass: '#00ff88', warn: '#ffaa00', fail: '#ff3b5c', pending: '#4a6080' };
+                const colors = { pass: '#00ff88', warn: '#ffaa00', fail: '#ff3b5c', pending: '#7688a6' };
                 const color = colors[status];
                 return (
                   <motion.div
@@ -156,11 +165,11 @@ const ValidationEnginePanel: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-3 mt-1 text-xs">
-                        <span><span style={{ color: '#4a6080' }}>Computed: </span>
+                        <span><span style={{ color: '#7688a6' }}>Computed: </span>
                           <span style={{ color }}>{v.computed}</span></span>
-                        <span><span style={{ color: '#4a6080' }}>Required: </span>
+                        <span><span style={{ color: '#7688a6' }}>Required: </span>
                           <span style={{ color: '#8ba8cc' }}>{v.required}</span></span>
-                        <span><span style={{ color: '#4a6080' }}>Conf: </span>
+                        <span><span style={{ color: '#7688a6' }}>Conf: </span>
                           <span style={{ color }}>{(v.confidence * 100).toFixed(0)}%</span></span>
                       </div>
                       <div className="text-xs mt-1 font-mono" style={{ color: '#9f5ffb' }}>
@@ -219,7 +228,7 @@ const ValidationEnginePanel: React.FC = () => {
                 <PolarGrid stroke="rgba(0,212,255,0.1)" />
                 <PolarAngleAxis
                   dataKey="subject"
-                  tick={{ fill: '#4a6080', fontSize: 10 }}
+                  tick={{ fill: '#7688a6', fontSize: 10 }}
                 />
                 <Radar
                   name="Score"
@@ -256,7 +265,7 @@ const ValidationEnginePanel: React.FC = () => {
                   >
                     <div>
                       <div className="text-xs font-mono font-semibold" style={{ color: '#00d4ff' }}>{std.standard}</div>
-                      <div className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{std.domain}</div>
+                      <div className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{std.domain}</div>
                     </div>
                     <span className={`af-badge-${overallSt}`}>
                       {std.results.filter(r => r === 'pass').length}/{std.results.length}
@@ -279,7 +288,7 @@ const ValidationEnginePanel: React.FC = () => {
                   <span style={{ color: '#8ba8cc' }}>{check}</span>
                 </div>
               ))}
-              <div className="text-xs mt-2" style={{ color: '#4a6080' }}>
+              <div className="text-xs mt-2" style={{ color: '#7688a6' }}>
                 Applicability: {COMPLIANCE_MATRIX[activeStandard].applicability}
               </div>
             </div>

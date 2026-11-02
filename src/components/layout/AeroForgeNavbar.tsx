@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu, ChevronDown, Settings, Bell,
   Wifi, Zap, Shield, Activity
 } from 'lucide-react';
+import { useInterval } from '../../utils/hooks';
 
 interface AeroForgeNavbarProps {
   activeSection: string;
@@ -13,11 +14,36 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
   const [time, setTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
+  useInterval(() => setTime(new Date()), 1000);
+
+  // Close open dropdowns on outside click or Escape.
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (!showNotifications && !showProfile) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        setShowProfile(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showNotifications, showProfile]);
 
   const notifications = [
     { id: 1, type: 'success', message: 'Scramjet inlet M5.5 — CAD complete', time: '2m ago' },
@@ -85,7 +111,7 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
             >
               AEROFORGE AI
             </div>
-            <div className="text-xs" style={{ color: '#4a6080', marginTop: '-2px' }}>
+            <div className="text-xs" style={{ color: '#7688a6', marginTop: '-2px' }}>
               Natural Language → CAD → CFD
             </div>
           </div>
@@ -93,8 +119,8 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
 
         {/* ── Center: Breadcrumb ──────────────────────────── */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium" style={{ color: '#4a6080' }}>Platform</span>
-          <ChevronDown size={12} style={{ color: '#4a6080', transform: 'rotate(-90deg)' }} />
+          <span className="text-xs font-medium" style={{ color: '#7688a6' }}>Platform</span>
+          <ChevronDown size={12} style={{ color: '#7688a6', transform: 'rotate(-90deg)' }} />
           <span
             className="text-xs font-semibold px-2 py-1 rounded"
             style={{
@@ -121,7 +147,7 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
           <div className="h-5 w-px" style={{ background: 'rgba(0, 212, 255, 0.12)' }} />
 
           {/* Clock */}
-          <div className="hidden lg:block text-xs font-mono" style={{ color: '#4a6080' }}>
+          <div className="hidden lg:block text-xs font-mono" style={{ color: '#7688a6' }}>
             {time.toUTCString().slice(17, 25)} UTC
           </div>
 
@@ -154,7 +180,7 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
                 >
                   <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(0,212,255,0.08)' }}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#4a6080' }}>System Events</span>
+                      <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#7688a6' }}>System Events</span>
                       <span className="af-badge-info">{notifications.length} new</span>
                     </div>
                   </div>
@@ -179,7 +205,7 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs" style={{ color: '#8ba8cc' }}>{n.message}</p>
-                        <p className="text-xs mt-0.5" style={{ color: '#4a6080' }}>{n.time}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#7688a6' }}>{n.time}</p>
                       </div>
                     </div>
                   ))}
@@ -189,11 +215,14 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
           </div>
 
           {/* Profile */}
-          <div className="relative">
+          <div className="relative" ref={profileRef}>
             <button
               onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors"
               style={{ color: '#8ba8cc' }}
+              aria-haspopup="true"
+              aria-expanded={showProfile}
+              aria-label="User profile menu"
             >
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
@@ -219,7 +248,7 @@ const AeroForgeNavbar: React.FC<AeroForgeNavbarProps> = ({ activeSection }) => {
                 >
                   <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(0,212,255,0.08)' }}>
                     <div className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Aerospace Engineer</div>
-                    <div className="text-xs" style={{ color: '#4a6080' }}>Level 2 — SUPERVISED</div>
+                    <div className="text-xs" style={{ color: '#7688a6' }}>Level 2 — SUPERVISED</div>
                   </div>
                   {[
                     { label: 'Autonomy Settings', icon: <Zap size={13} /> },
@@ -274,7 +303,7 @@ const StatusIndicator: React.FC<{
       }}
     >
       <div style={{ color: colors[status] }}>{icon}</div>
-      <span className="text-xs font-medium" style={{ color: '#4a6080' }}>{label}</span>
+      <span className="text-xs font-medium" style={{ color: '#7688a6' }}>{label}</span>
       <div
         className="w-1.5 h-1.5 rounded-full"
         style={{ background: colors[status] }}

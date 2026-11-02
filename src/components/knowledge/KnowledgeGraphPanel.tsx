@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, BookOpen, Database, Zap } from 'lucide-react';
+import { Search, BookOpen, Database, Zap, Share2, Link } from 'lucide-react';
+import { useInterval } from '../../utils/hooks';
 
 // ── Knowledge graph SVG visualization ─────────────────────────────────────────
 interface GraphNode {
@@ -47,10 +48,7 @@ const InteractiveKnowledgeGraph: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>('n01');
   const [animOffset, setAnimOffset] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setAnimOffset(o => (o + 1) % 100), 80);
-    return () => clearInterval(t);
-  }, []);
+  useInterval(() => setAnimOffset(o => (o + 1) % 100), 80);
 
   const getNodeById = (id: string) => GRAPH_NODES.find(n => n.id === id);
   const activeNode = selectedNode ? getNodeById(selectedNode) : null;
@@ -107,9 +105,18 @@ const InteractiveKnowledgeGraph: React.FC = () => {
             <g
               key={node.id}
               style={{ cursor: 'pointer' }}
+              role="button"
+              tabIndex={0}
+              aria-label={node.label}
               onMouseEnter={() => setHoveredNode(node.id)}
               onMouseLeave={() => setHoveredNode(null)}
               onClick={() => setSelectedNode(node.id === selectedNode ? null : node.id)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedNode(node.id === selectedNode ? null : node.id);
+                }
+              }}
             >
               {/* Outer glow ring */}
               {(isSelected || isHovered) && (
@@ -165,10 +172,10 @@ const InteractiveKnowledgeGraph: React.FC = () => {
             {activeNode?.type.toUpperCase()}
           </div>
           <div className="font-semibold mb-2" style={{ color: '#e8f4ff' }}>{activeNode?.label}</div>
-          <div style={{ color: '#4a6080' }}>
+          <div style={{ color: '#7688a6' }}>
             {activeNode?.connections.length ?? 0} connections
           </div>
-          <div className="mt-1" style={{ color: '#4a6080' }}>
+          <div className="mt-1" style={{ color: '#7688a6' }}>
             Strength: {((activeNode?.strength ?? 0) * 100).toFixed(0)}%
           </div>
         </motion.div>
@@ -179,7 +186,7 @@ const InteractiveKnowledgeGraph: React.FC = () => {
         {Object.entries(NODE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-            <span className="text-xs capitalize" style={{ color: '#4a6080', fontSize: '9px' }}>{type}</span>
+            <span className="text-xs capitalize" style={{ color: '#7688a6', fontSize: '9px' }}>{type}</span>
           </div>
         ))}
       </div>
@@ -200,17 +207,28 @@ const GraphRAGQuery: React.FC = () => {
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState(SAMPLE_QUERIES.slice(0, 2));
+  // Sequence number so stale responses can't overwrite newer ones,
+  // plus timer cleanup on unmount.
+  const seqRef = useRef(0);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => {
+    timersRef.current.forEach(clearTimeout);
+  }, []);
 
   const handleQuery = (q: string) => {
+    const seq = ++seqRef.current;
     setLoading(true);
     setQuery(q);
-    setTimeout(() => {
+    const id = setTimeout(() => {
+      if (seq !== seqRef.current) return; // a newer query superseded this one
       const match = SAMPLE_QUERIES.find(s => s.q === q);
       const res = match?.result ?? `Graph traversal: Found ${Math.floor(Math.random() * 50 + 10)} related nodes across aerospace knowledge base`;
       setResult(res);
       setHistory(prev => [{ q, result: res }, ...prev.slice(0, 4)]);
       setLoading(false);
     }, 800);
+    timersRef.current.push(id);
   };
 
   return (
@@ -228,6 +246,7 @@ const GraphRAGQuery: React.FC = () => {
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && query && handleQuery(query)}
           placeholder="Ask: 'oblique shock ramp angle for Mach 5.5...'"
+          aria-label="Graph RAG query"
           className="af-input flex-1 text-xs"
         />
         <button
@@ -287,7 +306,7 @@ const GraphRAGQuery: React.FC = () => {
                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.2)')}
               >
                 <div style={{ color: '#8ba8cc' }}>{h.q}</div>
-                <div style={{ color: '#4a6080', fontSize: '10px', marginTop: 2 }}>{h.result.slice(0, 60)}…</div>
+                <div style={{ color: '#7688a6', fontSize: '10px', marginTop: 2 }}>{h.result.slice(0, 60)}…</div>
               </button>
             ))}
           </div>
@@ -314,7 +333,7 @@ const KnowledgeStats: React.FC = () => {
         <div key={s.label} className="af-glass-card p-3 text-center">
           <div className="flex justify-center mb-1" style={{ color: s.color }}><span style={{ color: s.color }}>{s.icon}</span></div>
           <div className="text-base font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
-          <div className="text-xs mt-0.5" style={{ color: '#4a6080' }}>{s.label}</div>
+          <div className="text-xs mt-0.5" style={{ color: '#7688a6' }}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -337,7 +356,7 @@ const KnowledgeGraphPanel: React.FC = () => {
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold af-gradient-text">Knowledge Graph (Graph RAG)</h2>
-        <p className="text-xs" style={{ color: '#4a6080' }}>
+        <p className="text-xs" style={{ color: '#7688a6' }}>
           Aerospace domain knowledge · AIAA papers · MIL-SPEC standards · Physics formulas · Materials DB
         </p>
       </div>
@@ -361,7 +380,7 @@ const KnowledgeGraphPanel: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {/* Categories */}
           <div className="af-glass-card p-4">
-            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#7688a6' }}>
               Knowledge Categories
             </div>
             <div className="space-y-2">
@@ -389,7 +408,7 @@ const KnowledgeGraphPanel: React.FC = () => {
 
           {/* Recently added */}
           <div className="af-glass-card p-4">
-            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#7688a6' }}>
               Recently Indexed
             </div>
             <div className="space-y-2">
@@ -406,7 +425,7 @@ const KnowledgeGraphPanel: React.FC = () => {
                 >
                   <div className="font-semibold font-mono" style={{ color: '#ff6b2b' }}>{item.title}</div>
                   <div style={{ color: '#8ba8cc' }}>{item.topic}</div>
-                  <div style={{ color: '#4a6080', fontSize: '10px' }}>{item.time}</div>
+                  <div style={{ color: '#7688a6', fontSize: '10px' }}>{item.time}</div>
                 </div>
               ))}
             </div>
@@ -419,20 +438,5 @@ const KnowledgeGraphPanel: React.FC = () => {
     </div>
   );
 };
-
-// Missing import fix
-const Share2: React.FC<{ size: number }> = ({ size }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-  </svg>
-);
-
-const Link: React.FC<{ size: number }> = ({ size }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-  </svg>
-);
 
 export default KnowledgeGraphPanel;

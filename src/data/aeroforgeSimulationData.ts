@@ -1,5 +1,7 @@
 // AeroForge AI — Simulation & Demo Data
-// Realistic aerospace engineering parameters and results
+// Realistic aerospace engineering parameters and results.
+// All "random" data is generated with a seeded PRNG so every reload
+// (and every test) sees identical values.
 
 import type {
   DesignRequirement,
@@ -7,9 +9,9 @@ import type {
   GeometryParameter,
   ValidationResult,
   AgentStep,
-  CFDResult,
-  IterationPoint,
+  DesignLibraryItem,
 } from '../types/aeroforge';
+import { createRng } from '../utils/prng';
 
 // ── Scramjet Inlet Design Session ─────────────────────────────────────────────
 export const SCRAMJET_INLET_REQUIREMENTS: DesignRequirement[] = [
@@ -108,33 +110,6 @@ export const SCRAMJET_INLET_VALIDATION: ValidationResult[] = [
   { id: 'val-07', check: 'Isolator L/H Ratio', status: 'pass', computed: 'L/H=2.68', required: '2.5<L/H<3.5', confidence: 0.99, standard: 'AIAA-2001-1793' },
   { id: 'val-08', check: 'Manufacturing Tolerances', status: 'pass', computed: 'All dims ±0.05mm', required: '±0.1mm', confidence: 0.95, standard: 'AS9100D' },
 ];
-
-// ── CFD Convergence Data ───────────────────────────────────────────────────────
-export const generateCFDIterations = (): IterationPoint[] => {
-  const pts: IterationPoint[] = [];
-  for (let i = 1; i <= 500; i++) {
-    const decay = Math.exp(-i / 80);
-    const noise = (Math.random() - 0.5) * 0.001 * decay;
-    pts.push({
-      iteration: i,
-      residual: 1e-1 * Math.exp(-i / 60) + noise + 1e-6,
-      cl: 0.412 + decay * 0.15 * Math.sin(i / 20) + noise * 2,
-      cd: 0.0283 + decay * 0.008 * Math.cos(i / 25) + noise,
-      cm: -0.022 + decay * 0.004 * Math.sin(i / 30) + noise * 0.5,
-    });
-  }
-  return pts;
-};
-
-export const CFD_RESULTS: CFDResult = {
-  machNumber: 5.5,
-  totalPressureRecovery: 0.873,
-  massFlowRate: 12.1,
-  dragCoefficient: 0.0283,
-  liftCoefficient: 0.412,
-  stallAngle: 18.5,
-  iterationData: generateCFDIterations(),
-};
 
 // ── Agent Pipeline Steps ───────────────────────────────────────────────────────
 export const CAD_AGENT_STEPS: AgentStep[] = [
@@ -243,35 +218,35 @@ export const CFD_AGENT_STEPS: AgentStep[] = [
   },
 ];
 
-// ── Pressure Field Data (Mach contour simulation) ─────────────────────────────
-export const generateMachContourData = () => {
-  const data = [];
-  for (let x = 0; x <= 40; x++) {
-    for (let y = 0; y <= 20; y++) {
-      const xNorm = x / 40;
-      const yNorm = y / 20;
-      // Simulate Mach number distribution in scramjet inlet
-      const shock1 = Math.max(0, 1 - Math.abs(xNorm - 0.15 - yNorm * 0.3) * 15);
-      const shock2 = Math.max(0, 1 - Math.abs(xNorm - 0.35 - yNorm * 0.2) * 12);
-      const expansion = xNorm > 0.5 ? (xNorm - 0.5) * 0.8 : 0;
-      const baseMach = 5.5 - xNorm * 2.7;
-      const mach = Math.max(1.2, baseMach - shock1 * 1.2 - shock2 * 0.8 + expansion);
-      data.push({ x, y, mach: Number(mach.toFixed(2)) });
-    }
-  }
-  return data;
-};
-
 // ── Residual Convergence ───────────────────────────────────────────────────────
-export const CONVERGENCE_DATA = Array.from({ length: 500 }, (_, i) => ({
-  iteration: i + 1,
-  continuity: Math.max(1e-7, 1e-1 * Math.exp(-i / 55) + (Math.random() - 0.5) * 5e-3 * Math.exp(-i / 40)),
-  momentum_x: Math.max(1e-7, 8e-2 * Math.exp(-i / 60) + (Math.random() - 0.5) * 3e-3 * Math.exp(-i / 45)),
-  momentum_y: Math.max(1e-7, 6e-2 * Math.exp(-i / 58) + (Math.random() - 0.5) * 2e-3 * Math.exp(-i / 42)),
-  energy: Math.max(1e-7, 5e-2 * Math.exp(-i / 65) + (Math.random() - 0.5) * 2e-3 * Math.exp(-i / 50)),
-  k: Math.max(1e-7, 9e-2 * Math.exp(-i / 50) + (Math.random() - 0.5) * 4e-3 * Math.exp(-i / 38)),
-  omega: Math.max(1e-7, 7e-2 * Math.exp(-i / 52) + (Math.random() - 0.5) * 3e-3 * Math.exp(-i / 40)),
-}));
+export interface ConvergencePoint {
+  iteration: number;
+  continuity: number;
+  momentum_x: number;
+  momentum_y: number;
+  energy: number;
+  k: number;
+  omega: number;
+}
+
+export const DEFAULT_CONVERGENCE_SEED = 20260514;
+
+export function generateConvergenceData(
+  seed: number = DEFAULT_CONVERGENCE_SEED,
+): ConvergencePoint[] {
+  const rng = createRng(seed);
+  return Array.from({ length: 500 }, (_, i) => ({
+    iteration: i + 1,
+    continuity: Math.max(1e-7, 1e-1 * Math.exp(-i / 55) + (rng.next() - 0.5) * 5e-3 * Math.exp(-i / 40)),
+    momentum_x: Math.max(1e-7, 8e-2 * Math.exp(-i / 60) + (rng.next() - 0.5) * 3e-3 * Math.exp(-i / 45)),
+    momentum_y: Math.max(1e-7, 6e-2 * Math.exp(-i / 58) + (rng.next() - 0.5) * 2e-3 * Math.exp(-i / 42)),
+    energy: Math.max(1e-7, 5e-2 * Math.exp(-i / 65) + (rng.next() - 0.5) * 2e-3 * Math.exp(-i / 50)),
+    k: Math.max(1e-7, 9e-2 * Math.exp(-i / 50) + (rng.next() - 0.5) * 4e-3 * Math.exp(-i / 38)),
+    omega: Math.max(1e-7, 7e-2 * Math.exp(-i / 52) + (rng.next() - 0.5) * 3e-3 * Math.exp(-i / 40)),
+  }));
+}
+
+export const CONVERGENCE_DATA: ConvergencePoint[] = generateConvergenceData();
 
 // ── Pressure Distribution Along Ramp ─────────────────────────────────────────
 export const PRESSURE_DISTRIBUTION = [
@@ -299,7 +274,7 @@ export const PRESSURE_DISTRIBUTION = [
 ];
 
 // ── Design Library ─────────────────────────────────────────────────────────────
-export const DESIGN_LIBRARY = [
+export const DESIGN_LIBRARY: DesignLibraryItem[] = [
   {
     id: 'lib-01',
     name: 'Mixed-Compression Scramjet Inlet',
@@ -378,16 +353,45 @@ export const LLM_PROVIDERS = [
   { id: 'mistral', name: 'Mistral (BYOK)', model: 'mixtral-large', local: false, status: 'ready' },
 ];
 
-// ── Knowledge Graph Nodes ──────────────────────────────────────────────────────
-export const KNOWLEDGE_NODES = [
-  { id: 'kn-01', type: 'component', label: 'Scramjet Inlet', x: 50, y: 50, connections: ['kn-02', 'kn-03', 'kn-06'] },
-  { id: 'kn-02', type: 'constraint', label: 'Oblique Shock θ₁', x: 20, y: 30, connections: ['kn-04'] },
-  { id: 'kn-03', type: 'constraint', label: 'Total Pressure η_p', x: 80, y: 30, connections: ['kn-04', 'kn-05'] },
-  { id: 'kn-04', type: 'standard', label: 'MIL-E-5007D', x: 50, y: 15, connections: [] },
-  { id: 'kn-05', type: 'paper', label: 'AIAA-2004-3351', x: 85, y: 60, connections: [] },
-  { id: 'kn-06', type: 'material', label: 'Ti-6Al-4V', x: 20, y: 70, connections: ['kn-07'] },
-  { id: 'kn-07', type: 'standard', label: 'AMS 4928', x: 10, y: 85, connections: [] },
-];
+// ── Pareto Front (optimization demo) ───────────────────────────────────────────
+export interface ParetoPoint {
+  cd: number;
+  eta: number;
+  iter: number;
+  label?: string;
+}
+
+export function generateParetoData(seed = 42): { dominated: ParetoPoint[]; pareto: ParetoPoint[] } {
+  const rng = createRng(seed);
+  const dominated: ParetoPoint[] = [];
+
+  // Dominated design-space points: tradeoff between drag (Cd) and pressure recovery (eta_p)
+  for (let i = 0; i < 80; i++) {
+    dominated.push({
+      cd: 0.025 + rng.next() * 0.02,
+      eta: 0.82 + rng.next() * 0.06,
+      iter: rng.int(0, 199),
+    });
+  }
+
+  // Pareto front points
+  const paretoFront: ParetoPoint[] = [
+    { cd: 0.0218, eta: 0.898, iter: 0, label: 'Best η_p' },
+    { cd: 0.0231, eta: 0.892, iter: 0 },
+    { cd: 0.0245, eta: 0.886, iter: 0 },
+    { cd: 0.0258, eta: 0.881, iter: 0 },
+    { cd: 0.0271, eta: 0.876, iter: 0 },
+    { cd: 0.0283, eta: 0.873, iter: 0, label: 'Current Design' },
+    { cd: 0.0295, eta: 0.869, iter: 0 },
+    { cd: 0.0312, eta: 0.862, iter: 0 },
+    { cd: 0.0328, eta: 0.856, iter: 0 },
+    { cd: 0.0347, eta: 0.848, iter: 0, label: 'Best Cd' },
+  ];
+
+  return { dominated, pareto: paretoFront };
+}
+
+export const PARETO_DATA = generateParetoData();
 
 // ── System Metrics ─────────────────────────────────────────────────────────────
 export const SYSTEM_METRICS = {

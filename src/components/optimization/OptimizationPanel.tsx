@@ -1,44 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Zap, Play, RotateCcw, Target, GitBranch } from 'lucide-react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts';
-
-// Pareto front data
-const generateParetoData = () => {
-  const dominated: { cd: number; eta: number; iter: number; label?: string }[] = [];
-  const pareto: { cd: number; eta: number; iter: number; label?: string }[] = [];
-
-  // Pareto front: tradeoff between drag (Cd) and pressure recovery (eta_p)
-  for (let i = 0; i < 80; i++) {
-    dominated.push({
-      cd: 0.025 + Math.random() * 0.02,
-      eta: 0.82 + Math.random() * 0.06,
-      iter: Math.floor(Math.random() * 200),
-    });
-  }
-
-  // Pareto front points
-  const paretoFront = [
-    { cd: 0.0218, eta: 0.898, label: 'Best η_p' },
-    { cd: 0.0231, eta: 0.892 },
-    { cd: 0.0245, eta: 0.886 },
-    { cd: 0.0258, eta: 0.881 },
-    { cd: 0.0271, eta: 0.876 },
-    { cd: 0.0283, eta: 0.873, label: 'Current Design' },
-    { cd: 0.0295, eta: 0.869 },
-    { cd: 0.0312, eta: 0.862 },
-    { cd: 0.0328, eta: 0.856 },
-    { cd: 0.0347, eta: 0.848, label: 'Best Cd' },
-  ];
-  paretoFront.forEach(p => pareto.push({ ...p, iter: 0 }));
-
-  return { dominated, pareto };
-};
-
-const PARETO = generateParetoData();
+import { PARETO_DATA } from '../../data/aeroforgeSimulationData';
 
 // Optimization history
 const OPT_HISTORY = Array.from({ length: 50 }, (_, i) => ({
@@ -77,12 +44,12 @@ const ObjectiveFunctionCard: React.FC<{
     </div>
     <div className="flex items-end gap-3">
       <div>
-        <div className="text-xs" style={{ color: '#4a6080' }}>Current</div>
+        <div className="text-xs" style={{ color: '#7688a6' }}>Current</div>
         <div className="text-lg font-bold font-mono" style={{ color: '#8ba8cc' }}>{current}{unit}</div>
       </div>
       <div className="text-xl" style={{ color }}>→</div>
       <div>
-        <div className="text-xs" style={{ color: '#4a6080' }}>Optimal</div>
+        <div className="text-xs" style={{ color: '#7688a6' }}>Optimal</div>
         <div className="text-lg font-bold font-mono" style={{ color }}>{optimal}{unit}</div>
       </div>
     </div>
@@ -99,7 +66,17 @@ const OptimizationPanel: React.FC = () => {
   const [algorithm, setAlgorithm] = useState<'nsga-ii' | 'pso' | 'cma-es' | 'bayesian'>('nsga-ii');
   const [running, setRunning] = useState(false);
   const [generation, setGeneration] = useState(0);
-  const [displayHistory, setDisplayHistory] = useState(OPT_HISTORY.slice(0, 50));
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopInterval = () => {
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  // Make sure a running interval can never outlive the component.
+  useEffect(() => stopInterval, []);
 
   const algorithms = [
     { id: 'nsga-ii', label: 'NSGA-II', desc: 'Non-dominated sorting genetic algorithm (multi-obj)' },
@@ -109,20 +86,29 @@ const OptimizationPanel: React.FC = () => {
   ];
 
   const handleRun = () => {
+    if (running) return;
     setRunning(true);
     setGeneration(0);
-    const interval = setInterval(() => {
-      setGeneration(g => {
-        if (g >= 50) { setRunning(false); clearInterval(interval); return 50; }
-        return g + 1;
-      });
+    let g = 0;
+    stopInterval();
+    intervalRef.current = setInterval(() => {
+      g += 1;
+      setGeneration(g);
+      if (g >= 50) {
+        stopInterval();
+        setRunning(false);
+      }
     }, 120);
   };
 
   const handleReset = () => {
+    stopInterval(); // actually stop the run, not just hide the indicator
     setRunning(false);
     setGeneration(0);
   };
+
+  // Idle: show the full history. Running: grow it with the generation counter.
+  const visibleHistory = generation > 0 ? OPT_HISTORY.slice(0, generation) : OPT_HISTORY;
 
   return (
     <div className="space-y-4">
@@ -135,7 +121,7 @@ const OptimizationPanel: React.FC = () => {
           }}>
             Multi-Objective Optimization Loop
           </h2>
-          <p className="text-xs" style={{ color: '#4a6080' }}>
+          <p className="text-xs" style={{ color: '#7688a6' }}>
             NSGA-II · Pareto front · CAD↔CFD optimization loop · Phase 3
           </p>
         </div>
@@ -193,20 +179,20 @@ const OptimizationPanel: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.05)" />
               <XAxis
                 type="number" dataKey="cd" name="Cd" domain={[0.02, 0.05]}
-                stroke="#4a6080" tick={{ fontSize: 10 }}
-                label={{ value: 'Drag Coeff. C_D', position: 'insideBottomRight', fill: '#4a6080', fontSize: 10 }}
+                stroke="#7688a6" tick={{ fontSize: 10 }}
+                label={{ value: 'Drag Coeff. C_D', position: 'insideBottomRight', fill: '#7688a6', fontSize: 10 }}
               />
               <YAxis
                 type="number" dataKey="eta" name="η_p" domain={[0.80, 0.91]}
-                stroke="#4a6080" tick={{ fontSize: 10 }}
-                label={{ value: 'η_p', angle: -90, position: 'insideLeft', fill: '#4a6080', fontSize: 10 }}
+                stroke="#7688a6" tick={{ fontSize: 10 }}
+                label={{ value: 'η_p', angle: -90, position: 'insideLeft', fill: '#7688a6', fontSize: 10 }}
               />
               <Tooltip
                 cursor={{ strokeDasharray: '3 3' }}
                 contentStyle={{ background: '#08101a', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8, fontSize: 11 }}
               />
-              <Scatter name="Design Space" data={PARETO.dominated} fill="rgba(0,212,255,0.2)" />
-              <Scatter name="Pareto Front" data={PARETO.pareto} fill="#00d4ff"
+              <Scatter name="Design Space" data={PARETO_DATA.dominated} fill="rgba(0,212,255,0.2)" />
+              <Scatter name="Pareto Front" data={PARETO_DATA.pareto} fill="#00d4ff"
                 shape={(props: { cx?: number; cy?: number }) => (
                   <circle cx={props.cx} cy={props.cy} r={5} fill="#00d4ff" stroke="rgba(0,212,255,0.5)" strokeWidth={1.5} />
                 )}
@@ -223,17 +209,17 @@ const OptimizationPanel: React.FC = () => {
             {running && <div className="af-dot-live ml-auto" />}
           </div>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={displayHistory.slice(0, Math.max(generation, 50))}>
+            <LineChart data={visibleHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.05)" />
-              <XAxis dataKey="generation" stroke="#4a6080" tick={{ fontSize: 10 }}
-                label={{ value: 'Generation', position: 'insideBottomRight', fill: '#4a6080', fontSize: 10 }} />
-              <YAxis yAxisId="eta" domain={[0.84, 0.92]} stroke="#4a6080" tick={{ fontSize: 10 }}
-                label={{ value: 'η_p', angle: -90, position: 'insideLeft', fill: '#4a6080', fontSize: 10 }} />
-              <YAxis yAxisId="cd" orientation="right" domain={[0.020, 0.040]} stroke="#4a6080" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="generation" stroke="#7688a6" tick={{ fontSize: 10 }}
+                label={{ value: 'Generation', position: 'insideBottomRight', fill: '#7688a6', fontSize: 10 }} />
+              <YAxis yAxisId="eta" domain={[0.84, 0.92]} stroke="#7688a6" tick={{ fontSize: 10 }}
+                label={{ value: 'η_p', angle: -90, position: 'insideLeft', fill: '#7688a6', fontSize: 10 }} />
+              <YAxis yAxisId="cd" orientation="right" domain={[0.020, 0.040]} stroke="#7688a6" tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ background: '#08101a', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8, fontSize: 11 }} />
               <Legend wrapperStyle={{ fontSize: '11px' }} />
               <Line yAxisId="eta" type="monotone" dataKey="best_eta" stroke="#00ff88" dot={false} strokeWidth={2} name="Best η_p" />
-              <Line yAxisId="eta" type="monotone" dataKey="avg_eta" stroke="#4a6080" dot={false} strokeWidth={1} strokeDasharray="4,2" name="Avg η_p" />
+              <Line yAxisId="eta" type="monotone" dataKey="avg_eta" stroke="#7688a6" dot={false} strokeWidth={1} strokeDasharray="4,2" name="Avg η_p" />
               <Line yAxisId="cd" type="monotone" dataKey="best_cd" stroke="#00d4ff" dot={false} strokeWidth={2} name="Best C_D" />
             </LineChart>
           </ResponsiveContainer>
@@ -260,14 +246,14 @@ const OptimizationPanel: React.FC = () => {
               >
                 <div className="w-4 h-4 rounded-full border-2 flex-shrink-0"
                   style={{
-                    borderColor: algorithm === alg.id ? '#9f5ffb' : '#4a6080',
+                    borderColor: algorithm === alg.id ? '#9f5ffb' : '#7688a6',
                     background: algorithm === alg.id ? '#9f5ffb' : 'transparent',
                   }} />
                 <div>
                   <div className="text-xs font-semibold font-mono" style={{ color: algorithm === alg.id ? '#9f5ffb' : '#8ba8cc' }}>
                     {alg.label}
                   </div>
-                  <div className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{alg.desc}</div>
+                  <div className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{alg.desc}</div>
                 </div>
               </button>
             ))}
@@ -296,10 +282,10 @@ const OptimizationPanel: React.FC = () => {
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs" style={{ color: '#8ba8cc' }}>{dv.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono" style={{ color: '#4a6080' }}>
+                      <span className="text-xs font-mono" style={{ color: '#7688a6' }}>
                         {dv.current}{dv.unit}
                       </span>
-                      <span className="text-xs" style={{ color: '#4a6080' }}>→</span>
+                      <span className="text-xs" style={{ color: '#7688a6' }}>→</span>
                       <span className="text-xs font-mono font-bold" style={{ color: improved ? '#00ff88' : '#8ba8cc' }}>
                         {dv.optimal}{dv.unit}
                       </span>

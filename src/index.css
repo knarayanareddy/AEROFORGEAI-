@@ -28,10 +28,10 @@
   --af-glass-border: rgba(0, 212, 255, 0.12);
   --af-glass-border-hover: rgba(0, 212, 255, 0.3);
 
-  /* Text */
+  /* Text (muted chosen for >= 4.5:1 contrast on the dark background, WCAG AA) */
   --af-text-primary: #e8f4ff;
   --af-text-secondary: #8ba8cc;
-  --af-text-muted: #4a6080;
+  --af-text-muted: #7688a6;
   --af-text-accent: #00d4ff;
 }
 
@@ -410,12 +410,12 @@ body {
 
 /* ── Recharts custom styles ────────────────────────────────────────────────── */
 .recharts-text {
-  fill: #4a6080 !important;
+  fill: #7688a6 !important;
   font-size: 11px !important;
 }
 
 .recharts-cartesian-axis-tick-value {
-  fill: #4a6080 !important;
+  fill: #7688a6 !important;
 }
 
 .recharts-legend-item-text {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Box, Layers, ChevronRight, Search, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Box, Layers, ChevronRight, Search } from 'lucide-react';
 import { DESIGN_LIBRARY } from '../../data/aeroforgeSimulationData';
+import { filterDesignLibrary } from '../../utils/design';
 
 // ── Wireframe SVG components per type ─────────────────────────────────────────
 const ScramjetWireframe: React.FC<{ animated: boolean }> = ({ animated }) => (
@@ -26,7 +27,7 @@ const ScramjetWireframe: React.FC<{ animated: boolean }> = ({ animated }) => (
     ))}
     {/* Labels */}
     <text x="40" y="15" fill="#00d4ff" fontSize="8" fontFamily="monospace">M∞=5.5</text>
-    <text x="150" y="95" fill="#4a6080" fontSize="7" fontFamily="monospace">ISOLATOR</text>
+    <text x="150" y="95" fill="#7688a6" fontSize="7" fontFamily="monospace">ISOLATOR</text>
     {/* Animated flow arrows */}
     {animated && [20, 40, 60].map((y, i) => (
       <motion.g key={y} animate={{ x: [0, 15, 0] }} transition={{ duration: 1.5, delay: i * 0.3, repeat: Infinity }}>
@@ -56,9 +57,9 @@ const NozzleWireframe: React.FC = () => (
     <text x="102" y="63" fill="#ffaa00" fontSize="8" fontFamily="monospace">THROAT</text>
     {/* Area ratio lines */}
     <line x1="10" y1="30" x2="10" y2="90" stroke="rgba(0,212,255,0.3)" strokeWidth="1" />
-    <text x="14" y="65" fill="#4a6080" fontSize="7" fontFamily="monospace">A*=1</text>
+    <text x="14" y="65" fill="#7688a6" fontSize="7" fontFamily="monospace">A*=1</text>
     <line x1="190" y1="55" x2="190" y2="65" stroke="rgba(0,212,255,0.3)" strokeWidth="1" />
-    <text x="155" y="45" fill="#4a6080" fontSize="7" fontFamily="monospace">Ae/A*=8</text>
+    <text x="155" y="45" fill="#7688a6" fontSize="7" fontFamily="monospace">Ae/A*=8</text>
     <text x="70" y="15" fill="#9f5ffb" fontSize="8" fontFamily="monospace">C-D Bell Nozzle M=3.0</text>
   </svg>
 );
@@ -94,7 +95,7 @@ const AirfoilWireframe: React.FC<{ animated: boolean }> = ({ animated }) => {
       {/* Chord line */}
       <line x1={startX} y1="60" x2={startX + chord} y2="60" stroke="rgba(0,255,136,0.2)" strokeWidth="1" strokeDasharray="4,3" />
       {/* AoA label */}
-      <text x="10" y="110" fill="#4a6080" fontSize="7" fontFamily="monospace">AoA: {aoa.toFixed(1)}°</text>
+      <text x="10" y="110" fill="#7688a6" fontSize="7" fontFamily="monospace">AoA: {aoa.toFixed(1)}°</text>
       <text x="10" y="15" fill="#00ff88" fontSize="8" fontFamily="monospace">NACA 0012 · M=0.72</text>
     </svg>
   );
@@ -160,7 +161,7 @@ const NacelleWireframe: React.FC = () => (
     <ellipse cx="183" cy="60" rx="7" ry="14" stroke="#ffaa00" strokeWidth="1.5" fill="rgba(255,170,0,0.06)" />
     {/* Pylons */}
     <line x1="100" y1="26" x2="100" y2="10" stroke="rgba(0,212,255,0.3)" strokeWidth="3" />
-    <text x="40" y="110" fill="#4a6080" fontSize="7" fontFamily="monospace">Turbofan BPR=12 · M=0.85</text>
+    <text x="40" y="110" fill="#7688a6" fontSize="7" fontFamily="monospace">Turbofan BPR=12 · M=0.85</text>
   </svg>
 );
 
@@ -173,7 +174,7 @@ const ComponentViewer: React.FC<{ type: string; selected: boolean }> = ({ type, 
     'aerospike-nozzle': <AerospikWireframe />,
     'turbofan-nacelle': <NacelleWireframe />,
   };
-  return wf[type] ?? <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#4a6080' }}>No preview</div>;
+  return wf[type] ?? <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#7688a6' }}>No preview</div>;
 };
 
 // ── Geometry Parameter Inspector ───────────────────────────────────────────────
@@ -220,7 +221,7 @@ const ParameterInspector: React.FC<{ item: typeof DESIGN_LIBRARY[0] }> = ({ item
           <span style={{ color: '#8ba8cc' }}>{p.label}</span>
           <div className="flex items-center gap-1">
             <span className="font-mono font-bold" style={{ color: '#00d4ff' }}>{p.value}</span>
-            <span style={{ color: '#4a6080' }}>{p.unit}</span>
+            <span style={{ color: '#7688a6' }}>{p.unit}</span>
           </div>
         </div>
       ))}
@@ -236,12 +237,7 @@ const GeometryEnginePanel: React.FC = () => {
 
   const filters = ['all', 'propulsion', 'aerodynamic', 'hypersonic', 'subsonic'];
 
-  const filtered = DESIGN_LIBRARY.filter(d => {
-    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.tags.some(t => t.includes(search.toLowerCase()));
-    const matchFilter = filter === 'all' || d.tags.includes(filter);
-    return matchSearch && matchFilter;
-  });
+  const filtered = filterDesignLibrary(DESIGN_LIBRARY, search, filter);
 
   const selected = DESIGN_LIBRARY.find(d => d.id === selectedId) ?? DESIGN_LIBRARY[0];
 
@@ -251,7 +247,7 @@ const GeometryEnginePanel: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold af-gradient-text">Aerospace Geometry Engine</h2>
-          <p className="text-xs" style={{ color: '#4a6080' }}>
+          <p className="text-xs" style={{ color: '#7688a6' }}>
             Parametric geometry library · FreeCAD · OpenCASCADE · STEP/IGES/STL export
           </p>
         </div>
@@ -270,12 +266,13 @@ const GeometryEnginePanel: React.FC = () => {
 
           {/* Search */}
           <div className="relative mb-3">
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#4a6080' }} />
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#7688a6' }} />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search components..."
+              aria-label="Search components"
               className="af-input pl-8 text-xs"
             />
           </div>
@@ -290,7 +287,7 @@ const GeometryEnginePanel: React.FC = () => {
                 style={{
                   background: filter === f ? 'rgba(0,212,255,0.12)' : 'rgba(0,0,0,0.3)',
                   border: `1px solid ${filter === f ? 'rgba(0,212,255,0.25)' : 'rgba(0,212,255,0.06)'}`,
-                  color: filter === f ? '#00d4ff' : '#4a6080',
+                  color: filter === f ? '#00d4ff' : '#7688a6',
                 }}
               >
                 {f}
@@ -315,7 +312,7 @@ const GeometryEnginePanel: React.FC = () => {
                     <div className="text-xs font-semibold truncate" style={{ color: selectedId === item.id ? '#00d4ff' : '#e8f4ff' }}>
                       {item.name}
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: '#4a6080' }}>
+                    <div className="text-xs mt-0.5" style={{ color: '#7688a6' }}>
                       M∞ {item.machRange} · η={item.eta_p}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -331,7 +328,7 @@ const GeometryEnginePanel: React.FC = () => {
                     <span className={`af-badge-${item.status === 'validated' ? 'pass' : 'warn'}`}>
                       {item.status === 'validated' ? 'VAL' : 'REV'}
                     </span>
-                    <span className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{item.version}</span>
+                    <span className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{item.version}</span>
                   </div>
                 </div>
               </button>
@@ -351,7 +348,7 @@ const GeometryEnginePanel: React.FC = () => {
                 {['WIRE', 'SOLID', 'SHADE'].map(m => (
                   <button key={m} className="text-xs px-2 py-1 rounded font-mono"
                     style={{ background: m === 'WIRE' ? 'rgba(0,212,255,0.12)' : 'transparent',
-                      color: m === 'WIRE' ? '#00d4ff' : '#4a6080' }}>
+                      color: m === 'WIRE' ? '#00d4ff' : '#7688a6' }}>
                     {m}
                   </button>
                 ))}
@@ -365,7 +362,7 @@ const GeometryEnginePanel: React.FC = () => {
             </div>
             <div className="px-4 py-2 border-t flex items-center gap-3" style={{ borderColor: 'rgba(0,212,255,0.08)' }}>
               <span className="text-xs" style={{ color: '#00d4ff' }}>{selected.name}</span>
-              <span className="ml-auto text-xs font-mono" style={{ color: '#4a6080' }}>{selected.version}</span>
+              <span className="ml-auto text-xs font-mono" style={{ color: '#7688a6' }}>{selected.version}</span>
             </div>
           </div>
 
@@ -401,14 +398,14 @@ const GeometryEnginePanel: React.FC = () => {
 
           {/* Performance KPIs */}
           <div className="af-glass-card p-4">
-            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#7688a6' }}>
               Performance KPIs
             </div>
             <div className="space-y-3">
               {[
-                { label: 'Aerodynamic Efficiency', value: (selected.eta_p * 100).toFixed(1), unit: '%', color: '#00ff88' },
-                { label: 'Design Mach Range', value: selected.machRange, unit: 'M∞', color: '#00d4ff' },
-                { label: 'Validation Score', value: selected.status === 'validated' ? '94.2' : '78.5', unit: '/100', color: selected.status === 'validated' ? '#00ff88' : '#ffaa00' },
+                { label: 'Aerodynamic Efficiency', value: (selected.eta_p * 100).toFixed(1), unit: '%', pct: selected.eta_p * 100, color: '#00ff88' },
+                { label: 'Design Mach Range', value: selected.machRange, unit: 'M∞', pct: (parseFloat(selected.machRange) / 6) * 100, color: '#00d4ff' },
+                { label: 'Validation Score', value: selected.status === 'validated' ? '94.2' : '78.5', unit: '/100', pct: selected.status === 'validated' ? 94.2 : 78.5, color: selected.status === 'validated' ? '#00ff88' : '#ffaa00' },
               ].map(kpi => (
                 <div key={kpi.label}>
                   <div className="flex justify-between mb-1">
@@ -419,7 +416,7 @@ const GeometryEnginePanel: React.FC = () => {
                   </div>
                   <div className="af-progress-bar">
                     <div className="af-progress-fill" style={{
-                      width: `${parseFloat(kpi.value) / (kpi.label === 'Aerodynamic Efficiency' ? 1 : kpi.label === 'Validation Score' ? 1 : 6) * 100}%`,
+                      width: `${Math.min(100, Math.max(0, kpi.pct))}%`,
                       background: kpi.color,
                     }} />
                   </div>
@@ -430,7 +427,7 @@ const GeometryEnginePanel: React.FC = () => {
 
           {/* Export */}
           <div className="af-glass-card p-4">
-            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#7688a6' }}>
               Export Formats
             </div>
             <div className="grid grid-cols-3 gap-2">

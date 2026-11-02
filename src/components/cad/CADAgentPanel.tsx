@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Send, Sparkles, CheckCircle, AlertTriangle, Clock,
-  Layers, Settings, Download, ChevronRight, Play, Pause,
-  RefreshCw, Copy, Info, Lock, Unlock
+  Sparkles, CheckCircle, AlertTriangle, Clock,
+  Layers, Settings, Download, ChevronRight, Play,
+  RefreshCw, Info, Lock, Unlock
 } from 'lucide-react';
 import {
   SCRAMJET_INLET_REQUIREMENTS,
@@ -12,6 +12,7 @@ import {
   SCRAMJET_INLET_VALIDATION,
   CAD_AGENT_STEPS,
 } from '../../data/aeroforgeSimulationData';
+import { formatDuration } from '../../utils/design';
 import type { AgentStep, GeometryParameter } from '../../types/aeroforge';
 
 // ── Geometry SVG Visualizer ────────────────────────────────────────────────────
@@ -21,10 +22,8 @@ const ScramjetInletSVG: React.FC<{ params: GeometryParameter[] }> = ({ params })
   const captureH = params.find(p => p.id === 'geo-01')?.value ?? 205;
 
   // Normalize for SVG
-  const scale = 1.8;
   const r1rad = (ramp1 * Math.PI) / 180;
   const r2rad = ((ramp1 + ramp2) * Math.PI) / 180;
-  const w = 400;
   const baseY = 160;
   const inletX = 30;
   const len1 = 120;
@@ -195,7 +194,7 @@ const DEMO_PROMPTS = [
   'Design a NACA 0012 airfoil wing section for chord 2.5m, optimize for Cl/Cd at Mach 0.72, include leading edge droop for stall margin',
 ];
 
-const TypewriterPrompt: React.FC<{ onSubmit: (p: string) => void }> = ({ onSubmit }) => {
+const TypewriterPrompt: React.FC<{ onSubmit: (p: string) => void; disabled?: boolean }> = ({ onSubmit, disabled }) => {
   const [text, setText] = useState('');
   const [promptIdx, setPromptIdx] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
@@ -238,10 +237,10 @@ const TypewriterPrompt: React.FC<{ onSubmit: (p: string) => void }> = ({ onSubmi
           <div className="af-terminal-dot" style={{ background: '#ff5f57' }} />
           <div className="af-terminal-dot" style={{ background: '#febc2e' }} />
           <div className="af-terminal-dot" style={{ background: '#28c840' }} />
-          <span className="text-xs ml-2" style={{ color: '#4a6080' }}>aeroforge-cad-agent · intent-parser</span>
+          <span className="text-xs ml-2" style={{ color: '#7688a6' }}>aeroforge-cad-agent · intent-parser</span>
         </div>
         <div className="p-4">
-          <div className="text-xs mb-2" style={{ color: '#4a6080' }}>
+          <div className="text-xs mb-2" style={{ color: '#7688a6' }}>
             {'>'} Natural language design intent:
           </div>
           {isUserMode ? (
@@ -277,7 +276,9 @@ const TypewriterPrompt: React.FC<{ onSubmit: (p: string) => void }> = ({ onSubmi
         <div className="flex-1" />
         <button
           onClick={handleSubmit}
+          disabled={disabled}
           className="af-btn-primary flex items-center gap-2"
+          style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
         >
           <Sparkles size={14} />
           Run CAD Agent
@@ -293,7 +294,7 @@ const AgentStepCard: React.FC<{ step: AgentStep; index: number }> = ({ step, ind
   const statusColors = {
     complete: '#00ff88',
     running: '#00d4ff',
-    pending: '#4a6080',
+    pending: '#7688a6',
     error: '#ff3b5c',
   };
 
@@ -346,17 +347,15 @@ const AgentStepCard: React.FC<{ step: AgentStep; index: number }> = ({ step, ind
 
         {/* Duration */}
         {step.duration !== undefined && (
-          <span className="text-xs font-mono" style={{ color: '#4a6080' }}>
-            {step.duration >= 60
-              ? `${(step.duration / 60).toFixed(0)}m ${(step.duration % 60).toFixed(0)}s`
-              : `${step.duration}s`}
+          <span className="text-xs font-mono" style={{ color: '#7688a6' }}>
+            {formatDuration(step.duration)}
           </span>
         )}
 
         <ChevronRight
           size={12}
           style={{
-            color: '#4a6080',
+            color: '#7688a6',
             transform: expanded ? 'rotate(90deg)' : 'none',
             transition: 'transform 0.2s',
           }}
@@ -397,10 +396,10 @@ const AgentStepCard: React.FC<{ step: AgentStep; index: number }> = ({ step, ind
                 lineHeight: 1.7,
               }}
             >
-              <div className="text-xs mb-1" style={{ color: '#4a6080' }}>{'→'} Output:</div>
+              <div className="text-xs mb-1" style={{ color: '#7688a6' }}>{'→'} Output:</div>
               {step.output}
             </div>
-            <div className="text-xs mt-1" style={{ color: '#4a6080' }}>
+            <div className="text-xs mt-1" style={{ color: '#7688a6' }}>
               {step.description}
             </div>
           </motion.div>
@@ -423,7 +422,7 @@ const GeometryParametersPanel: React.FC<{
           <div className="flex items-center gap-2">
             <button
               onClick={() => onToggleLock(p.id)}
-              style={{ color: p.locked ? '#ffaa00' : '#4a6080' }}
+              style={{ color: p.locked ? '#ffaa00' : '#7688a6' }}
             >
               {p.locked ? <Lock size={12} /> : <Unlock size={12} />}
             </button>
@@ -433,7 +432,7 @@ const GeometryParametersPanel: React.FC<{
             <span className="text-xs font-mono font-bold" style={{ color: '#00d4ff' }}>
               {p.value.toFixed(p.unit === '°' ? 1 : 0)}
             </span>
-            <span className="text-xs" style={{ color: '#4a6080' }}>{p.unit}</span>
+            <span className="text-xs" style={{ color: '#7688a6' }}>{p.unit}</span>
           </div>
         </div>
         <input
@@ -444,11 +443,12 @@ const GeometryParametersPanel: React.FC<{
           step={(p.max - p.min) / 100}
           value={p.value}
           disabled={p.locked}
+          aria-label={p.name}
           onChange={e => onParamChange(p.id, parseFloat(e.target.value))}
         />
         <div className="flex justify-between mt-1">
-          <span className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{p.min}{p.unit}</span>
-          <span className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{p.max}{p.unit}</span>
+          <span className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{p.min}{p.unit}</span>
+          <span className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{p.max}{p.unit}</span>
         </div>
       </div>
     ))}
@@ -476,12 +476,12 @@ const PhysicsConstraintsPanel: React.FC = () => {
               <span className="text-xs font-medium" style={{ color: '#e8f4ff' }}>{c.name}</span>
               <span className={`af-badge-${c.status}`}>{c.status.toUpperCase()}</span>
             </div>
-            <div className="text-xs font-mono" style={{ color: '#4a6080' }}>{c.formula}</div>
+            <div className="text-xs font-mono" style={{ color: '#7688a6' }}>{c.formula}</div>
             <div className="flex gap-3 mt-1">
-              <span className="text-xs"><span style={{ color: '#4a6080' }}>Computed: </span>
+              <span className="text-xs"><span style={{ color: '#7688a6' }}>Computed: </span>
                 <span style={{ color: '#00d4ff' }}>{c.computed}</span>
               </span>
-              <span className="text-xs"><span style={{ color: '#4a6080' }}>Target: </span>
+              <span className="text-xs"><span style={{ color: '#7688a6' }}>Target: </span>
                 <span style={{ color: '#8ba8cc' }}>{c.target}</span>
               </span>
             </div>
@@ -499,7 +499,17 @@ const CADAgentPanel: React.FC = () => {
   const [agentRunning, setAgentRunning] = useState(false);
   const [pipelineComplete, setPipelineComplete] = useState(true);
   const [steps, setSteps] = useState<AgentStep[]>(CAD_AGENT_STEPS);
-  const [currentStepIdx, setCurrentStepIdx] = useState(6);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear any pending pipeline timers on unmount.
+  useEffect(() => () => {
+    timersRef.current.forEach(clearTimeout);
+  }, []);
+
+  const later = (fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+  };
 
   const handleParamChange = (id: string, value: number) => {
     setGeoParams(prev => prev.map(p => p.id === id ? { ...p, value } : p));
@@ -511,11 +521,11 @@ const CADAgentPanel: React.FC = () => {
   };
 
   const handleRunAgent = (_prompt: string) => {
+    if (agentRunning) return; // re-entry guard: one pipeline at a time
     setAgentRunning(true);
     setPipelineComplete(false);
     // Reset steps to pending
-    setSteps(prev => prev.map((s, i) => ({ ...s, status: i === 0 ? 'running' : 'pending', progress: i === 0 ? 0 : 0 })));
-    setCurrentStepIdx(0);
+    setSteps(prev => prev.map((s, i) => ({ ...s, status: i === 0 ? 'running' : 'pending', progress: 0 })));
 
     // Simulate progressive completion
     let idx = 0;
@@ -530,16 +540,15 @@ const CADAgentPanel: React.FC = () => {
         status: i < idx ? 'complete' : i === idx ? 'running' : 'pending',
         progress: i === idx ? 75 : i < idx ? 100 : 0,
       })));
-      setCurrentStepIdx(idx);
       const duration = (CAD_AGENT_STEPS[idx].duration ?? 1) * 200;
-      setTimeout(() => {
+      later(() => {
         setSteps(prev => prev.map((s, i) => ({
           ...s,
           status: i <= idx ? 'complete' : i === idx + 1 ? 'running' : 'pending',
           progress: i <= idx ? 100 : 0,
         })));
         idx++;
-        setTimeout(runStep, 400);
+        later(runStep, 400);
       }, Math.min(duration, 2000));
     };
     runStep();
@@ -564,7 +573,7 @@ const CADAgentPanel: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold af-gradient-text">CAD Agent — Phase 1</h2>
-            <p className="text-xs" style={{ color: '#4a6080' }}>
+            <p className="text-xs" style={{ color: '#7688a6' }}>
               Natural Language → Parametric Aerospace Geometry · FreeCAD · STEP/IGES/STL
             </p>
           </div>
@@ -581,7 +590,7 @@ const CADAgentPanel: React.FC = () => {
             <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Intent Parser</span>
             <span className="af-badge-info ml-auto">Ollama llama3.2:70b</span>
           </div>
-          <TypewriterPrompt onSubmit={handleRunAgent} />
+          <TypewriterPrompt onSubmit={handleRunAgent} disabled={agentRunning} />
         </div>
 
         {/* Tabs */}
@@ -596,7 +605,7 @@ const CADAgentPanel: React.FC = () => {
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold transition-colors flex-1 justify-center"
                 style={{
-                  color: activeTab === tab.id ? '#00d4ff' : '#4a6080',
+                  color: activeTab === tab.id ? '#00d4ff' : '#7688a6',
                   borderBottom: activeTab === tab.id ? '2px solid #00d4ff' : '2px solid transparent',
                   background: activeTab === tab.id ? 'rgba(0,212,255,0.05)' : 'transparent',
                 }}
@@ -628,15 +637,15 @@ const CADAgentPanel: React.FC = () => {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="p-3 rounded-lg text-center" style={{ background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)' }}>
                     <div className="text-lg font-bold" style={{ color: '#00ff88' }}>{passCount}</div>
-                    <div className="text-xs" style={{ color: '#4a6080' }}>PASS</div>
+                    <div className="text-xs" style={{ color: '#7688a6' }}>PASS</div>
                   </div>
                   <div className="p-3 rounded-lg text-center" style={{ background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.15)' }}>
                     <div className="text-lg font-bold" style={{ color: '#ffaa00' }}>{warnCount}</div>
-                    <div className="text-xs" style={{ color: '#4a6080' }}>WARN</div>
+                    <div className="text-xs" style={{ color: '#7688a6' }}>WARN</div>
                   </div>
                   <div className="p-3 rounded-lg text-center" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}>
                     <div className="text-lg font-bold" style={{ color: '#00d4ff' }}>{avgConf}%</div>
-                    <div className="text-xs" style={{ color: '#4a6080' }}>AVG CONF.</div>
+                    <div className="text-xs" style={{ color: '#7688a6' }}>AVG CONF.</div>
                   </div>
                 </div>
                 {SCRAMJET_INLET_VALIDATION.map((v) => (
@@ -650,10 +659,10 @@ const CADAgentPanel: React.FC = () => {
                       <span className="text-xs font-medium" style={{ color: '#e8f4ff' }}>{v.check}</span>
                     </div>
                     <div className="flex flex-wrap gap-3 text-xs">
-                      <span><span style={{ color: '#4a6080' }}>Computed: </span><span style={{ color: '#00d4ff' }}>{v.computed}</span></span>
-                      <span><span style={{ color: '#4a6080' }}>Required: </span><span style={{ color: '#8ba8cc' }}>{v.required}</span></span>
-                      <span><span style={{ color: '#4a6080' }}>Standard: </span><span style={{ color: '#9f5ffb' }}>{v.standard}</span></span>
-                      <span><span style={{ color: '#4a6080' }}>Conf: </span><span style={{ color: '#00ff88' }}>{(v.confidence * 100).toFixed(0)}%</span></span>
+                      <span><span style={{ color: '#7688a6' }}>Computed: </span><span style={{ color: '#00d4ff' }}>{v.computed}</span></span>
+                      <span><span style={{ color: '#7688a6' }}>Required: </span><span style={{ color: '#8ba8cc' }}>{v.required}</span></span>
+                      <span><span style={{ color: '#7688a6' }}>Standard: </span><span style={{ color: '#9f5ffb' }}>{v.standard}</span></span>
+                      <span><span style={{ color: '#7688a6' }}>Conf: </span><span style={{ color: '#00ff88' }}>{(v.confidence * 100).toFixed(0)}%</span></span>
                     </div>
                   </div>
                 ))}
@@ -676,7 +685,7 @@ const CADAgentPanel: React.FC = () => {
               <span className="text-xs font-semibold" style={{ color: '#e8f4ff' }}>Geometry Viewport</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: '#4a6080' }}>FreeCAD · STEP</span>
+              <span className="text-xs" style={{ color: '#7688a6' }}>FreeCAD · STEP</span>
               <button className="af-btn-secondary py-1 px-2 text-xs flex items-center gap-1">
                 <Download size={11} /> Export
               </button>
@@ -703,13 +712,13 @@ const CADAgentPanel: React.FC = () => {
                 border: `1px solid ${kpi.color}20`,
               }}
             >
-              <div className="text-xs mb-1" style={{ color: '#4a6080' }}>{kpi.label}</div>
+              <div className="text-xs mb-1" style={{ color: '#7688a6' }}>{kpi.label}</div>
               <div className="text-base font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</div>
               <div className="flex items-center gap-1 mt-1">
                 <span style={{ color: kpi.ok ? '#00ff88' : '#ffaa00', fontSize: '10px' }}>
                   {kpi.ok ? '✓' : '⚠'}
                 </span>
-                <span className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>Target: {kpi.target}</span>
+                <span className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>Target: {kpi.target}</span>
               </div>
             </div>
           ))}
@@ -731,7 +740,7 @@ const CADAgentPanel: React.FC = () => {
                 <span className="font-mono font-semibold" style={{ color: '#00d4ff' }}>
                   {req.value} {req.unit}
                 </span>
-                <span className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>
+                <span className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>
                   {(req.confidence * 100).toFixed(0)}%
                 </span>
               </div>

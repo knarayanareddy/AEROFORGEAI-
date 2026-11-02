@@ -1,12 +1,20 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "aeroforge-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "AeroForge AI — AI-native aerospace design & simulation platform (NL → CAD → CFD → validated design)",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "clsx": "2.1.1",
@@ -14,19 +22,24 @@
     "lucide-react": "^1.14.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-router-dom": "^7.15.0",
     "recharts": "^3.8.1",
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.17",
-    "@types/node": "22.19.17",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.1",
-    "tailwindcss": "4.1.17",
-    "typescript": "5.9.3",
-    "vite": "7.3.2",
-    "vite-plugin-singlefile": "2.3.0"
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^22.19.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.2.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^5.1.0"
   }
 }
