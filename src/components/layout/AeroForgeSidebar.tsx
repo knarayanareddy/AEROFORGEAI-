@@ -120,12 +120,12 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
             <span className="text-xs" style={{ color: '#00ff88' }}>LOCAL</span>
           </div>
         </div>
-        <div className="text-xs" style={{ color: '#4a6080' }}>llama3.2:70b</div>
+        <div className="text-xs" style={{ color: '#7688a6' }}>llama3.2:70b</div>
         <div className="mt-1.5 af-progress-bar">
           <div className="af-progress-fill" style={{ width: '34%' }} />
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs" style={{ color: '#4a6080' }}>VRAM</span>
+          <span className="text-xs" style={{ color: '#7688a6' }}>VRAM</span>
           <span className="text-xs" style={{ color: '#8ba8cc' }}>28.4 / 80 GB</span>
         </div>
       </div>
@@ -133,7 +133,7 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
       {/* ── Nav Items ───────────────────────────────────── */}
       <nav className="flex-1 px-2 py-1">
         <div className="af-section-label mt-2 mb-1 px-2">NAVIGATION</div>
-        {SIDEBAR_ITEMS.map((item, idx) => {
+        {SIDEBAR_ITEMS.map((item) => {
           const isActive = activeSection === item.id;
           return (
             <motion.button
@@ -155,7 +155,7 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
                 {/* Icon */}
                 <div
                   style={{
-                    color: isActive ? '#00d4ff' : '#4a6080',
+                    color: isActive ? '#00d4ff' : '#7688a6',
                     flexShrink: 0,
                   }}
                 >
@@ -180,7 +180,7 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs truncate mt-0.5" style={{ color: '#4a6080', fontSize: '10px' }}>
+                  <div className="text-xs truncate mt-0.5" style={{ color: '#7688a6', fontSize: '10px' }}>
                     {item.sublabel}
                   </div>
                 </div>
@@ -222,7 +222,7 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
         <div className="text-xs font-bold" style={{ color: '#e8f4ff' }}>
           LEVEL 2 — SUPERVISED
         </div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a6080' }}>
+        <div className="text-xs mt-0.5" style={{ color: '#7688a6' }}>
           AI runs full pipeline, engineer reviews output
         </div>
         <div className="flex gap-1 mt-2">

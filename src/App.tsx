@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AeroForgeNavbar from './components/layout/AeroForgeNavbar';
 import AeroForgeSidebar from './components/layout/AeroForgeSidebar';
@@ -15,7 +15,8 @@ import type { AppSection } from './types/aeroforge';
 // ── Loading Screen ─────────────────────────────────────────────────────────────
 const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const bootSteps = [
     'Initializing AeroForge AI kernel...',
@@ -28,22 +29,22 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
     'AeroForge AI v1.0.0 — Ready.',
   ];
 
+  // Advance the progress bar; the updater stays pure (no side effects).
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setTimeout(onComplete, 400);
-          return 100;
-        }
-        const next = p + 1.8;
-        const step = Math.min(Math.floor(next / 13), bootSteps.length - 1);
-        setCurrentStep(step);
-        return Math.min(next, 100);
-      });
+      setProgress(p => Math.min(p + 1.8, 100));
     }, 35);
     return () => clearInterval(interval);
   }, []);
+
+  // Fire onComplete once the bar is full (with cleanup on unmount).
+  useEffect(() => {
+    if (progress < 100) return;
+    const t = setTimeout(() => onCompleteRef.current(), 400);
+    return () => clearTimeout(t);
+  }, [progress]);
+
+  const currentStep = Math.min(Math.floor(progress / 13), bootSteps.length - 1);
 
   return (
     <div
@@ -125,10 +126,10 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
         </div>
 
         <h1 className="text-3xl font-black tracking-wider af-gradient-text mb-1">AEROFORGE AI</h1>
-        <p className="text-sm" style={{ color: '#4a6080' }}>
+        <p className="text-sm" style={{ color: '#7688a6' }}>
           AI-Native Aerospace Design & Simulation Platform
         </p>
-        <p className="text-xs mt-1" style={{ color: '#2a3a50' }}>
+        <p className="text-xs mt-1" style={{ color: '#7688a6' }}>
           Natural Language → CAD → CFD → Validated Aerospace Design
         </p>
       </motion.div>
@@ -145,7 +146,7 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
             <div className="af-terminal-dot" style={{ background: '#ff5f57' }} />
             <div className="af-terminal-dot" style={{ background: '#febc2e' }} />
             <div className="af-terminal-dot" style={{ background: '#28c840' }} />
-            <span className="text-xs ml-2" style={{ color: '#4a6080' }}>aeroforge-kernel · boot sequence</span>
+            <span className="text-xs ml-2" style={{ color: '#7688a6' }}>aeroforge-kernel · boot sequence</span>
           </div>
           <div className="p-4 space-y-1">
             {bootSteps.slice(0, currentStep + 1).map((step, i) => (
@@ -158,7 +159,7 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
                 <span style={{ color: i === currentStep ? '#00d4ff' : '#00ff88' }}>
                   {i === currentStep ? '▶' : '✓'}
                 </span>
-                <span style={{ color: i === currentStep ? '#a8d8ff' : '#4a6080' }}>
+                <span style={{ color: i === currentStep ? '#a8d8ff' : '#7688a6' }}>
                   {step}
                 </span>
               </motion.div>
@@ -179,13 +180,13 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
           />
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs font-mono" style={{ color: '#4a6080' }}>Loading system...</span>
+          <span className="text-xs font-mono" style={{ color: '#7688a6' }}>Loading system...</span>
           <span className="text-xs font-mono" style={{ color: '#00d4ff' }}>{progress.toFixed(0)}%</span>
         </div>
       </motion.div>
 
       {/* Version */}
-      <div className="absolute bottom-4 text-xs font-mono" style={{ color: '#2a3a50' }}>
+      <div className="absolute bottom-4 text-xs font-mono" style={{ color: '#7688a6' }}>
         v1.0.0-MVP · Multi-Agent AI Platform · BYOK + Local LLM · AS9100D
       </div>
     </div>

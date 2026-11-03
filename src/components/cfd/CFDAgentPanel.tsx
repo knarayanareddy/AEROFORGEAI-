@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wind, Activity, Play, Settings, BarChart2,
-  CheckCircle, AlertTriangle, Layers, Cpu, Download
+  CheckCircle, Layers, Download
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,17 +10,16 @@ import {
 } from 'recharts';
 import {
   CONVERGENCE_DATA, PRESSURE_DISTRIBUTION,
-  CFD_AGENT_STEPS, CFD_RESULTS
+  CFD_AGENT_STEPS
 } from '../../data/aeroforgeSimulationData';
+import { useInterval } from '../../utils/hooks';
+import { formatDuration } from '../../utils/design';
 
 // ── Mach Contour Visualization ─────────────────────────────────────────────────
 const MachContourViz: React.FC = () => {
   const [animFrame, setAnimFrame] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setAnimFrame(f => f + 1), 50);
-    return () => clearInterval(t);
-  }, []);
+  useInterval(() => setAnimFrame(f => f + 1), 50);
 
   const getMachColor = (mach: number) => {
     // Subsonic: blue, transonic: green, supersonic: yellow, hypersonic: red
@@ -137,7 +136,7 @@ const CustomTooltip: React.FC<{ active?: boolean; payload?: { color: string; nam
       border: '1px solid rgba(0,212,255,0.15)',
       fontSize: '11px',
     }}>
-      <div style={{ color: '#4a6080', marginBottom: 4 }}>Iteration: {label}</div>
+      <div style={{ color: '#7688a6', marginBottom: 4 }}>Iteration: {label}</div>
       {payload.map((p) => (
         <div key={p.name} style={{ color: p.color }}>
           {p.name}: {typeof p.value === 'number' ? p.value.toExponential(2) : p.value}
@@ -180,7 +179,7 @@ const SolverConfigPanel: React.FC = () => {
               { label: 'symmetry.type', val: 'symmetryPlane', color: '#8ba8cc' },
             ].map((item) => (
               <div key={item.label} className="flex gap-3">
-                <span style={{ color: '#4a6080', width: '160px', flexShrink: 0 }}>{item.label}</span>
+                <span style={{ color: '#7688a6', width: '160px', flexShrink: 0 }}>{item.label}</span>
                 <span style={{ color: item.color }}>{item.val}</span>
               </div>
             ))}
@@ -205,13 +204,13 @@ const SolverConfigPanel: React.FC = () => {
               <div
                 className="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
                 style={{
-                  borderColor: solver === s.id ? '#00d4ff' : '#4a6080',
+                  borderColor: solver === s.id ? '#00d4ff' : '#7688a6',
                   background: solver === s.id ? '#00d4ff' : 'transparent',
                 }}
               />
               <div>
                 <div className="text-xs font-semibold font-mono" style={{ color: solver === s.id ? '#00d4ff' : '#8ba8cc' }}>{s.label}</div>
-                <div className="text-xs" style={{ color: '#4a6080', fontSize: '10px' }}>{s.desc}</div>
+                <div className="text-xs" style={{ color: '#7688a6', fontSize: '10px' }}>{s.desc}</div>
               </div>
             </button>
           ))}
@@ -241,7 +240,8 @@ const SolverConfigPanel: React.FC = () => {
               <span className="text-xs font-mono" style={{ color: '#00d4ff' }}>{cfl.toFixed(2)}</span>
             </div>
             <input type="range" className="af-slider w-full" min="0.1" max="2.0" step="0.05"
-              value={cfl} onChange={e => setCfl(parseFloat(e.target.value))} />
+              value={cfl} onChange={e => setCfl(parseFloat(e.target.value))}
+              aria-label="CFL number" />
           </div>
           <div>
             <div className="flex justify-between mb-1">
@@ -249,7 +249,8 @@ const SolverConfigPanel: React.FC = () => {
               <span className="text-xs font-mono" style={{ color: '#00d4ff' }}>{maxIter}</span>
             </div>
             <input type="range" className="af-slider w-full" min="100" max="2000" step="50"
-              value={maxIter} onChange={e => setMaxIter(parseInt(e.target.value))} />
+              value={maxIter} onChange={e => setMaxIter(parseInt(e.target.value))}
+              aria-label="Max iterations" />
           </div>
         </div>
       </div>
@@ -266,16 +267,13 @@ const CFDAgentPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'convergence' | 'pressure' | 'mach' | 'pipeline' | 'config'>('mach');
   const [displayedData, setDisplayedData] = useState(CONVERGENCE_DATA.slice(0, 487));
 
-  // Simulate live residual update
-  useEffect(() => {
-    const t = setInterval(() => {
-      setDisplayedData(prev => {
-        if (prev.length >= CONVERGENCE_DATA.length) return prev;
-        return [...prev, CONVERGENCE_DATA[prev.length]];
-      });
-    }, 80);
-    return () => clearInterval(t);
-  }, []);
+  // Simulate live residual update (paused when the tab is hidden)
+  useInterval(() => {
+    setDisplayedData(prev => {
+      if (prev.length >= CONVERGENCE_DATA.length) return prev;
+      return [...prev, CONVERGENCE_DATA[prev.length]];
+    });
+  }, 80);
 
   const tabs = [
     { id: 'mach', label: 'Mach Field', icon: <Wind size={12} /> },
@@ -294,13 +292,13 @@ const CFDAgentPanel: React.FC = () => {
             background: 'linear-gradient(135deg, #00ff88, #00d4ff)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>CFD Agent — Phase 2</h2>
-          <p className="text-xs" style={{ color: '#4a6080' }}>
+          <p className="text-xs" style={{ color: '#7688a6' }}>
             CAD→CFD Handoff · OpenFOAM rhoCentralFoam · k-ω SST · 4.2M cells
           </p>
         </div>
         <div className="flex items-center gap-2">
           <span className="af-badge-pass">CONVERGED</span>
-          <span className="af-badge-info">487 / 500 ITER</span>
+          <span className="af-badge-info">{displayedData.length} / {CONVERGENCE_DATA.length} ITER</span>
         </div>
       </div>
 
@@ -317,7 +315,7 @@ const CFDAgentPanel: React.FC = () => {
             className="p-3 rounded-xl"
             style={{ background: `${kpi.color}08`, border: `1px solid ${kpi.color}20` }}
           >
-            <div className="text-xs mb-1" style={{ color: '#4a6080' }}>{kpi.label}</div>
+            <div className="text-xs mb-1" style={{ color: '#7688a6' }}>{kpi.label}</div>
             <div className="text-sm font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</div>
             <div className="text-xs mt-0.5" style={{ color: kpi.ok ? '#00ff88' : '#ffaa00', fontSize: '10px' }}>
               {kpi.ok ? '✓' : '⚠'} {kpi.target}
@@ -335,7 +333,7 @@ const CFDAgentPanel: React.FC = () => {
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold transition-colors whitespace-nowrap"
               style={{
-                color: activeTab === tab.id ? '#00d4ff' : '#4a6080',
+                color: activeTab === tab.id ? '#00d4ff' : '#7688a6',
                 borderBottom: activeTab === tab.id ? '2px solid #00d4ff' : '2px solid transparent',
                 background: activeTab === tab.id ? 'rgba(0,212,255,0.05)' : 'transparent',
               }}
@@ -351,7 +349,7 @@ const CFDAgentPanel: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="af-dot-live" />
-                <span className="text-xs" style={{ color: '#4a6080' }}>Live Mach number field · scramjet inlet M∞=5.5</span>
+                <span className="text-xs" style={{ color: '#7688a6' }}>Live Mach number field · scramjet inlet M∞=5.5</span>
               </div>
               <MachContourViz />
               <div className="grid grid-cols-3 gap-3 text-xs">
@@ -366,7 +364,7 @@ const CFDAgentPanel: React.FC = () => {
                   <div key={item.label} className="flex items-center gap-2 p-2 rounded" style={{ background: 'rgba(0,0,0,0.3)' }}>
                     <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: item.color }} />
                     <div>
-                      <div style={{ color: '#4a6080', fontSize: '10px' }}>{item.label}</div>
+                      <div style={{ color: '#7688a6', fontSize: '10px' }}>{item.label}</div>
                       <div className="font-mono font-bold" style={{ color: item.color }}>M={item.value}</div>
                     </div>
                   </div>
@@ -380,15 +378,15 @@ const CFDAgentPanel: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="af-dot-live" />
-                <span className="text-xs" style={{ color: '#4a6080' }}>
+                <span className="text-xs" style={{ color: '#7688a6' }}>
                   Residual convergence · {displayedData.length} / 500 iterations
                 </span>
               </div>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={displayedData.filter((_, i) => i % 3 === 0)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.05)" />
-                  <XAxis dataKey="iteration" stroke="#4a6080" tick={{ fontSize: 10 }} />
-                  <YAxis scale="log" domain={['auto', 'auto']} stroke="#4a6080" tick={{ fontSize: 10 }} tickFormatter={v => v.toExponential(0)} />
+                  <XAxis dataKey="iteration" stroke="#7688a6" tick={{ fontSize: 10 }} />
+                  <YAxis scale="log" domain={['auto', 'auto']} stroke="#7688a6" tick={{ fontSize: 10 }} tickFormatter={v => v.toExponential(0)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
                   <Line type="monotone" dataKey="continuity" stroke="#ff3b5c" dot={false} strokeWidth={1.5} name="Continuity" />
@@ -405,7 +403,7 @@ const CFDAgentPanel: React.FC = () => {
           {activeTab === 'pressure' && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs" style={{ color: '#4a6080' }}>
+                <span className="text-xs" style={{ color: '#7688a6' }}>
                   Normalized wall pressure distribution along ramp · CFD vs. oblique shock theory
                 </span>
               </div>
@@ -418,8 +416,8 @@ const CFDAgentPanel: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.05)" />
-                  <XAxis dataKey="x" stroke="#4a6080" tick={{ fontSize: 10 }} label={{ value: 'x/L', position: 'insideBottomRight', fill: '#4a6080', fontSize: 10 }} />
-                  <YAxis stroke="#4a6080" tick={{ fontSize: 10 }} label={{ value: 'P/P∞', angle: -90, position: 'insideLeft', fill: '#4a6080', fontSize: 10 }} />
+                  <XAxis dataKey="x" stroke="#7688a6" tick={{ fontSize: 10 }} label={{ value: 'x/L', position: 'insideBottomRight', fill: '#7688a6', fontSize: 10 }} />
+                  <YAxis stroke="#7688a6" tick={{ fontSize: 10 }} label={{ value: 'P/P∞', angle: -90, position: 'insideLeft', fill: '#7688a6', fontSize: 10 }} />
                   <Tooltip contentStyle={{ background: '#08101a', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8, fontSize: 11 }} />
                   <Area type="monotone" dataKey="p_p_inf" stroke="#00d4ff" fill="url(#pressGrad)" strokeWidth={2} name="P/P∞ (CFD)" />
                   <Line type="monotone" dataKey="cp" stroke="#ffaa00" strokeWidth={1.5} dot={false} name="Cp (theory)" />
@@ -436,7 +434,7 @@ const CFDAgentPanel: React.FC = () => {
                   { loc: 'Isolator exit', p: '18.4 P∞', cp: '1.449' },
                 ].map(r => (
                   <div key={r.loc} className="p-2 rounded text-xs" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,212,255,0.06)' }}>
-                    <div style={{ color: '#4a6080', fontSize: '10px' }}>{r.loc}</div>
+                    <div style={{ color: '#7688a6', fontSize: '10px' }}>{r.loc}</div>
                     <div className="font-mono font-bold" style={{ color: '#00d4ff' }}>{r.p}</div>
                     <div className="font-mono" style={{ color: '#9f5ffb', fontSize: '10px' }}>Cp={r.cp}</div>
                   </div>
@@ -467,11 +465,11 @@ const CFDAgentPanel: React.FC = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-semibold" style={{ color: '#e8f4ff' }}>{step.label}</span>
                       <span className="af-badge-pass">COMPLETE</span>
-                      <span className="text-xs font-mono ml-auto" style={{ color: '#4a6080' }}>
-                        {step.duration! >= 60 ? `${(step.duration! / 60).toFixed(0)}m` : `${step.duration}s`}
+                      <span className="text-xs font-mono ml-auto" style={{ color: '#7688a6' }}>
+                        {formatDuration(step.duration)}
                       </span>
                     </div>
-                    <div className="text-xs" style={{ color: '#4a6080' }}>{step.description}</div>
+                    <div className="text-xs" style={{ color: '#7688a6' }}>{step.description}</div>
                     {step.output && (
                       <div className="mt-2 p-2 rounded text-xs font-mono"
                         style={{ background: 'rgba(0,0,0,0.4)', color: '#a8d8ff', borderLeft: '2px solid #00ff88' }}>
@@ -566,7 +564,7 @@ const CFDAgentPanel: React.FC = () => {
                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.3)')}
               >
                 <span style={{ color: f.color }}>↓ {f.label}</span>
-                <span style={{ color: '#4a6080' }}>{f.size}</span>
+                <span style={{ color: '#7688a6' }}>{f.size}</span>
               </button>
             ))}
           </div>

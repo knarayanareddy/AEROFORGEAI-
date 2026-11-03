@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Activity, Cpu, Wind, Database, Shield, TrendingUp,
-  GitBranch, Clock, CheckCircle, AlertTriangle, Zap, BarChart2
+  Activity, Cpu, Database, Shield, Share2,
+  GitBranch, CheckCircle, Zap, BarChart2
 } from 'lucide-react';
 import { SYSTEM_METRICS, DESIGN_LIBRARY, LLM_PROVIDERS } from '../../data/aeroforgeSimulationData';
+import { useInterval } from '../../utils/hooks';
 import type { AppSection } from '../../types/aeroforge';
 
 interface MissionControlDashboardProps {
@@ -43,6 +44,14 @@ const MetricCard: React.FC<{
     animate={{ opacity: 1, y: 0 }}
     whileHover={{ y: -3, scale: 1.01 }}
     onClick={onClick}
+    onKeyDown={e => {
+      if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
     className="af-glass-card p-4 cursor-pointer relative overflow-hidden"
     style={{ borderColor: `${color}22` }}
   >
@@ -61,7 +70,7 @@ const MetricCard: React.FC<{
     <div className="text-xl font-bold" style={{ color: '#e8f4ff' }}>{value}
       {unit && <span className="text-xs ml-1" style={{ color }}>{unit}</span>}
     </div>
-    <div className="text-xs mt-1" style={{ color: '#4a6080' }}>{label}</div>
+    <div className="text-xs mt-1" style={{ color: '#7688a6' }}>{label}</div>
   </motion.div>
 );
 
@@ -82,7 +91,7 @@ const PipelineStatusWidget: React.FC<{ onNavigate: (s: AppSection) => void }> = 
     complete: '#00ff88',
     warn: '#ffaa00',
     running: '#00d4ff',
-    pending: '#4a6080',
+    pending: '#7688a6',
   };
 
   return (
@@ -120,7 +129,7 @@ const PipelineStatusWidget: React.FC<{ onNavigate: (s: AppSection) => void }> = 
                 <div className="text-xs font-medium truncate" style={{ color: colors[s.status], fontSize: '9px' }}>
                   {s.label}
                 </div>
-                <div className="text-xs" style={{ color: '#4a6080', fontSize: '9px' }}>{s.time}</div>
+                <div className="text-xs" style={{ color: '#7688a6', fontSize: '9px' }}>{s.time}</div>
               </div>
             </div>
             {i < stages.length - 1 && (
@@ -149,21 +158,22 @@ const RecentDesigns: React.FC<{ onNavigate: (s: AppSection) => void }> = ({ onNa
     </div>
     <div className="space-y-2">
       {DESIGN_LIBRARY.slice(0, 5).map((d) => (
-        <div
+        <button
+          type="button"
           key={d.id}
-          className="flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors"
+          className="w-full flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors text-left"
           style={{ background: 'rgba(0,212,255,0.03)', border: '1px solid rgba(0,212,255,0.06)' }}
           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,212,255,0.07)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,212,255,0.03)')}
         >
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate" style={{ color: '#e8f4ff' }}>{d.name}</div>
-            <div className="text-xs" style={{ color: '#4a6080' }}>M∞ {d.machRange} · η={d.eta_p}</div>
+            <div className="text-xs" style={{ color: '#7688a6' }}>M∞ {d.machRange} · η={d.eta_p}</div>
           </div>
           <span className={`af-badge-${d.status === 'validated' ? 'pass' : 'warn'}`}>
             {d.status === 'validated' ? 'VAL' : 'REV'}
           </span>
-        </div>
+        </button>
       ))}
     </div>
   </div>
@@ -180,19 +190,16 @@ const LiveTelemetry: React.FC = () => {
     residual: 2.4e-6,
   });
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      setMetrics(prev => ({
-        cpuUsage: Math.max(20, Math.min(99, prev.cpuUsage + (Math.random() - 0.48) * 6)),
-        gpuUsage: Math.max(30, Math.min(99, prev.gpuUsage + (Math.random() - 0.4) * 4)),
-        memUsage: Math.max(40, Math.min(95, prev.memUsage + (Math.random() - 0.5) * 3)),
-        networkBw: Math.max(50, Math.min(800, prev.networkBw + (Math.random() - 0.5) * 80)),
-        solverIter: Math.min(500, prev.solverIter + 1),
-        residual: Math.max(1e-7, prev.residual * (0.998 + Math.random() * 0.004 - 0.002)),
-      }));
-    }, 800);
-    return () => clearInterval(t);
-  }, []);
+  useInterval(() => {
+    setMetrics(prev => ({
+      cpuUsage: Math.max(20, Math.min(99, prev.cpuUsage + (Math.random() - 0.48) * 6)),
+      gpuUsage: Math.max(30, Math.min(99, prev.gpuUsage + (Math.random() - 0.4) * 4)),
+      memUsage: Math.max(40, Math.min(95, prev.memUsage + (Math.random() - 0.5) * 3)),
+      networkBw: Math.max(50, Math.min(800, prev.networkBw + (Math.random() - 0.5) * 80)),
+      solverIter: Math.min(500, prev.solverIter + 1),
+      residual: Math.max(1e-7, prev.residual * (0.998 + Math.random() * 0.004 - 0.002)),
+    }));
+  }, 800);
 
   const bars = [
     { label: 'CPU', value: metrics.cpuUsage, color: '#00d4ff' },
@@ -229,25 +236,25 @@ const LiveTelemetry: React.FC = () => {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-2 rounded-lg" style={{ background: 'rgba(0,212,255,0.05)' }}>
-          <div className="text-xs" style={{ color: '#4a6080' }}>Solver Iter.</div>
+          <div className="text-xs" style={{ color: '#7688a6' }}>Solver Iter.</div>
           <div className="text-sm font-mono font-bold" style={{ color: '#00d4ff' }}>
             {metrics.solverIter} / 500
           </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(0,255,136,0.05)' }}>
-          <div className="text-xs" style={{ color: '#4a6080' }}>Residual</div>
+          <div className="text-xs" style={{ color: '#7688a6' }}>Residual</div>
           <div className="text-sm font-mono font-bold" style={{ color: '#00ff88' }}>
             {metrics.residual.toExponential(1)}
           </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(124,58,237,0.05)' }}>
-          <div className="text-xs" style={{ color: '#4a6080' }}>Network I/O</div>
+          <div className="text-xs" style={{ color: '#7688a6' }}>Network I/O</div>
           <div className="text-sm font-mono font-bold" style={{ color: '#9f5ffb' }}>
             {metrics.networkBw.toFixed(0)} MB/s
           </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(255,170,0,0.05)' }}>
-          <div className="text-xs" style={{ color: '#4a6080' }}>LLM Tokens</div>
+          <div className="text-xs" style={{ color: '#7688a6' }}>LLM Tokens</div>
           <div className="text-sm font-mono font-bold" style={{ color: '#ffaa00' }}>
             12.4K/s
           </div>
@@ -290,7 +297,7 @@ const AutonomySelector: React.FC = () => {
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
               style={{
                 background: selected === l.id ? colors[l.id] : 'rgba(255,255,255,0.05)',
-                color: selected === l.id ? '#000' : '#4a6080',
+                color: selected === l.id ? '#000' : '#7688a6',
               }}
             >
               {l.id}
@@ -299,7 +306,7 @@ const AutonomySelector: React.FC = () => {
               <div className="text-xs font-bold" style={{ color: selected === l.id ? colors[l.id] : '#8ba8cc' }}>
                 {l.label}
               </div>
-              <div className="text-xs truncate" style={{ color: '#4a6080', fontSize: '10px' }}>{l.desc}</div>
+              <div className="text-xs truncate" style={{ color: '#7688a6', fontSize: '10px' }}>{l.desc}</div>
             </div>
             {selected === l.id && (
               <CheckCircle size={12} style={{ color: colors[l.id], flexShrink: 0 }} />
@@ -342,19 +349,19 @@ const MissionControlDashboard: React.FC<MissionControlDashboardProps> = ({ onNav
             <p className="text-sm mb-1" style={{ color: '#8ba8cc' }}>
               AI-Native Aerospace Design & Simulation Platform
             </p>
-            <p className="text-xs" style={{ color: '#4a6080' }}>
+            <p className="text-xs" style={{ color: '#7688a6' }}>
               Natural Language → CAD Geometry → CFD Validation → Export
             </p>
           </div>
 
           <div className="hidden md:flex flex-col items-end gap-2">
-            <div className="text-xs font-mono" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-mono" style={{ color: '#7688a6' }}>
               Sessions today: <span style={{ color: '#00d4ff' }}>47</span>
             </div>
-            <div className="text-xs font-mono" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-mono" style={{ color: '#7688a6' }}>
               Avg. cycle time: <span style={{ color: '#00ff88' }}>8.4 min</span>
             </div>
-            <div className="text-xs font-mono" style={{ color: '#4a6080' }}>
+            <div className="text-xs font-mono" style={{ color: '#7688a6' }}>
               Pass rate: <span style={{ color: '#00ff88' }}>94.2%</span>
             </div>
           </div>
@@ -466,7 +473,7 @@ const MissionControlDashboard: React.FC<MissionControlDashboardProps> = ({ onNav
                 {p.local ? 'LOCAL' : 'BYOK'}
               </div>
               <div className="text-xs font-semibold" style={{ color: '#e8f4ff' }}>{p.name.split(' (')[0]}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#4a6080', fontSize: '10px' }}>{p.model}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#7688a6', fontSize: '10px' }}>{p.model}</div>
               <div className="mt-2">
                 <span
                   className="text-xs px-1.5 py-0.5 rounded font-semibold"
@@ -474,7 +481,7 @@ const MissionControlDashboard: React.FC<MissionControlDashboardProps> = ({ onNav
                     background: p.status === 'active' ? 'rgba(0,255,136,0.12)' :
                       p.status === 'configured' ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.04)',
                     color: p.status === 'active' ? '#00ff88' :
-                      p.status === 'configured' ? '#00d4ff' : '#4a6080',
+                      p.status === 'configured' ? '#00d4ff' : '#7688a6',
                     fontSize: '9px',
                     letterSpacing: '0.04em',
                   }}
@@ -489,13 +496,5 @@ const MissionControlDashboard: React.FC<MissionControlDashboardProps> = ({ onNav
     </div>
   );
 };
-
-// Fix missing import
-const Share2: React.FC<{ size: number }> = ({ size }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-  </svg>
-);
 
 export default MissionControlDashboard;
