@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { SYSTEM_METRICS, DESIGN_LIBRARY, LLM_PROVIDERS } from '../../data/aeroforgeSimulationData';
 import { useInterval } from '../../utils/hooks';
+import { createRng, type Rng } from '../../utils/prng';
+import { ProvenanceChip } from '../common/Provenance';
 import type { AppSection } from '../../types/aeroforge';
 
 interface MissionControlDashboardProps {
@@ -179,25 +181,36 @@ const RecentDesigns: React.FC<{ onNavigate: (s: AppSection) => void }> = ({ onNa
   </div>
 );
 
-// Live system telemetry
+// Deterministic telemetry fixture.
+//
+// This is machine chrome, not engineering data, but it used Math.random(), which
+// meant two screenshots of the same screen never matched and nothing about it
+// could be asserted in a test. A seeded PRNG fixes both: the walk is identical
+// on every mount, so the dashboard is reproducible and testable.
+const TELEMETRY_SEED = 0x5eed_1234;
+
+// Live system telemetry (fixture — see ProvenanceChip in the header)
 const LiveTelemetry: React.FC = () => {
+  const rngRef = React.useRef<Rng | null>(null);
+  if (rngRef.current === null) rngRef.current = createRng(TELEMETRY_SEED);
+  const rng = rngRef.current;
+
+  // Nothing here is solved: there is no solver, so there is no iteration count
+  // and no residual. They are reported as absent rather than as a number that
+  // keeps creeping toward a convergence that is not happening.
   const [metrics, setMetrics] = useState({
     cpuUsage: 67,
     gpuUsage: 89,
     memUsage: 72,
     networkBw: 234,
-    solverIter: 487,
-    residual: 2.4e-6,
   });
 
   useInterval(() => {
     setMetrics(prev => ({
-      cpuUsage: Math.max(20, Math.min(99, prev.cpuUsage + (Math.random() - 0.48) * 6)),
-      gpuUsage: Math.max(30, Math.min(99, prev.gpuUsage + (Math.random() - 0.4) * 4)),
-      memUsage: Math.max(40, Math.min(95, prev.memUsage + (Math.random() - 0.5) * 3)),
-      networkBw: Math.max(50, Math.min(800, prev.networkBw + (Math.random() - 0.5) * 80)),
-      solverIter: Math.min(500, prev.solverIter + 1),
-      residual: Math.max(1e-7, prev.residual * (0.998 + Math.random() * 0.004 - 0.002)),
+      cpuUsage: Math.max(20, Math.min(99, prev.cpuUsage + (rng.next() - 0.48) * 6)),
+      gpuUsage: Math.max(30, Math.min(99, prev.gpuUsage + (rng.next() - 0.4) * 4)),
+      memUsage: Math.max(40, Math.min(95, prev.memUsage + (rng.next() - 0.5) * 3)),
+      networkBw: Math.max(50, Math.min(800, prev.networkBw + (rng.next() - 0.5) * 80)),
     }));
   }, 800);
 
@@ -211,8 +224,13 @@ const LiveTelemetry: React.FC = () => {
     <div className="af-glass-card p-4">
       <div className="flex items-center gap-2 mb-4">
         <Activity size={14} style={{ color: '#00d4ff' }} />
-        <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Live Telemetry</span>
-        <div className="af-dot-live ml-auto" />
+        <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>System Telemetry</span>
+        <ProvenanceChip
+          source="simulated"
+          detail="Seeded fixture walk (mulberry32). Reproducible on every load, but it is not measuring anything."
+          className="ml-2"
+        />
+        <span className="text-xs ml-auto" style={{ color: '#7688a6', fontSize: 10 }}>fixture</span>
       </div>
 
       <div className="space-y-3 mb-4">
@@ -237,14 +255,14 @@ const LiveTelemetry: React.FC = () => {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-2 rounded-lg" style={{ background: 'rgba(0,212,255,0.05)' }}>
           <div className="text-xs" style={{ color: '#7688a6' }}>Solver Iter.</div>
-          <div className="text-sm font-mono font-bold" style={{ color: '#00d4ff' }}>
-            {metrics.solverIter} / 500
+          <div className="text-sm font-mono font-bold" style={{ color: '#5b6580' }} title="No solver is attached to this build">
+            no solver
           </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(0,255,136,0.05)' }}>
           <div className="text-xs" style={{ color: '#7688a6' }}>Residual</div>
-          <div className="text-sm font-mono font-bold" style={{ color: '#00ff88' }}>
-            {metrics.residual.toExponential(1)}
+          <div className="text-sm font-mono font-bold" style={{ color: '#5b6580' }} title="No solve has run, so no residual exists">
+            n/a
           </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(124,58,237,0.05)' }}>
@@ -255,8 +273,8 @@ const LiveTelemetry: React.FC = () => {
         </div>
         <div className="p-2 rounded-lg" style={{ background: 'rgba(255,170,0,0.05)' }}>
           <div className="text-xs" style={{ color: '#7688a6' }}>LLM Tokens</div>
-          <div className="text-sm font-mono font-bold" style={{ color: '#ffaa00' }}>
-            12.4K/s
+          <div className="text-sm font-mono font-bold" style={{ color: '#5b6580' }} title="No model is called by this build">
+            none
           </div>
         </div>
       </div>

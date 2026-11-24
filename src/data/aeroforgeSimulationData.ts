@@ -12,25 +12,49 @@ import type {
   DesignLibraryItem,
 } from '../types/aeroforge';
 import { createRng } from '../utils/prng';
+import {
+  DEFAULT_ANALYSIS,
+  DESIGN_POINT,
+  evaluateInletRules,
+  type InletAnalysis,
+} from '../lib/inletDesign';
+import { DESIGN_ALTITUDE_M } from '../lib/atmosphere';
+import { stagnantWallProfile } from '../lib/inletDesign';
 
 // ── Scramjet Inlet Design Session ─────────────────────────────────────────────
 export const SCRAMJET_INLET_REQUIREMENTS: DesignRequirement[] = [
-  { id: 'req-01', parameter: 'Design Mach Number', value: 5.5, unit: 'M∞', confidence: 0.98 },
-  { id: 'req-02', parameter: 'Total Pressure Recovery', value: '>0.85', unit: 'η_p', confidence: 0.95 },
+  { id: 'req-01', parameter: 'Design Mach Number', value: DESIGN_POINT.mach, unit: 'M∞', confidence: 1 },
+  { id: 'req-02', parameter: 'Total Pressure Recovery', value: '>0.85', unit: 'η_p', confidence: 1 },
   { id: 'req-03', parameter: 'Mass Flow Rate', value: 12, unit: 'kg/s', confidence: 0.97 },
   { id: 'req-04', parameter: 'Capture Area', value: 0.042, unit: 'm²', confidence: 0.92 },
   { id: 'req-05', parameter: 'Cowl Drag Minimization', value: 'MIN', unit: 'C_D_cowl', confidence: 0.88 },
   { id: 'req-06', parameter: 'Material', value: 'Ti-6Al-4V', unit: 'alloy', confidence: 0.99 },
-  { id: 'req-07', parameter: 'Operating Temperature', value: 1650, unit: 'K', confidence: 0.93 },
+  {
+    id: 'req-07',
+    parameter: 'Flight Altitude',
+    value: DESIGN_ALTITUDE_M / 1000,
+    unit: 'km',
+    confidence: 1,
+  },
 ];
+
+/**
+ * Physics constraints — DERIVED from `lib/inletDesign`, never typed in.
+ *
+ * The formula strings are rendered next to the value they produced, so the two
+ * can no longer disagree (the old `phys-04` displayed a pressure-ratio formula
+ * that was wrong by a factor of ~2 at hypersonic Mach).
+ */
+const A: InletAnalysis = DEFAULT_ANALYSIS;
+const P = A.performance;
 
 export const SCRAMJET_INLET_PHYSICS: PhysicsConstraint[] = [
   {
     id: 'phys-01',
     name: 'Oblique Shock Ramp Angle 1',
-    formula: 'θ₁ = f(M∞, β₁)',
-    status: 'pass',
-    computed: '7.2°',
+    formula: 'θ₁ from weak-shock solution of θ(β, M∞)',
+    status: P.chain.steps[0]?.shock.attached ? 'pass' : 'fail',
+    computed: `${DESIGN_POINT.rampAnglesDeg[0].toFixed(1)}° (β₁ = ${P.chain.steps[0]?.shock.betaDeg.toFixed(2) ?? '—'}°)`,
     target: '6.5–8.0°',
     tolerance: 0.5,
     unit: 'degrees',
@@ -38,60 +62,67 @@ export const SCRAMJET_INLET_PHYSICS: PhysicsConstraint[] = [
   {
     id: 'phys-02',
     name: 'Oblique Shock Ramp Angle 2',
-    formula: 'θ₂ = f(M₁, β₂)',
-    status: 'pass',
-    computed: '5.8°',
+    formula: 'θ₂ from weak-shock solution of θ(β, M₁)',
+    status: P.chain.steps[1]?.shock.attached ? 'pass' : 'fail',
+    computed: `${DESIGN_POINT.rampAnglesDeg[1].toFixed(1)}° (β₂ = ${P.chain.steps[1]?.shock.betaDeg.toFixed(2) ?? '—'}°)`,
     target: '5.0–7.0°',
     tolerance: 0.5,
     unit: 'degrees',
   },
   {
     id: 'phys-03',
-    name: 'Total Pressure Recovery',
-    formula: 'π_c = ∏(P0i/P0∞)',
-    status: 'pass',
-    computed: 0.873,
+    name: 'Total Pressure Recovery (ramps only)',
+    formula: 'π = ∏ (p₀,ᵢ₊₁ / p₀,ᵢ) across the shock chain',
+    status: P.totalPressureRecovery >= 0.85 ? 'pass' : P.totalPressureRecovery >= 0.6 ? 'warn' : 'fail',
+    computed: Number.isFinite(P.totalPressureRecovery)
+      ? Number(P.totalPressureRecovery.toFixed(4))
+      : 'detached',
     target: '>0.850',
     tolerance: 0.01,
     unit: 'ratio',
   },
   {
     id: 'phys-04',
-    name: 'Isentropic Compression Ratio',
-    formula: 'P2/P∞ = (1+γM∞²sin²β)/(γ+1)',
-    status: 'pass',
-    computed: '18.4',
-    target: '15–22',
-    tolerance: 2,
+    name: 'Static Pressure Ratio p/p∞',
+    formula: 'p₂/p₁ = 1 + 2γ/(γ+1)·(M₁²sin²β − 1)',
+    status: P.pressureRatio >= 2 ? 'pass' : 'warn',
+    computed: Number.isFinite(P.pressureRatio) ? Number(P.pressureRatio.toFixed(3)) : 'detached',
+    target: '4.0–22 (design dependent)',
+    tolerance: 0.5,
     unit: 'ratio',
   },
   {
     id: 'phys-05',
     name: 'Isolator Entry Mach',
-    formula: 'M_iso = M∞·f(θ_total)',
-    status: 'pass',
-    computed: 2.8,
-    target: '2.5–3.2',
+    formula: 'M₂ = M_n2 / sin(β − θ) applied through the chain',
+    status:
+      P.isolatorMach >= 2.5 && P.isolatorMach <= 3.5
+        ? 'pass'
+        : Number.isFinite(P.isolatorMach)
+          ? 'warn'
+          : 'fail',
+    computed: Number.isFinite(P.isolatorMach) ? Number(P.isolatorMach.toFixed(3)) : 'detached',
+    target: '2.5–3.5',
     tolerance: 0.1,
     unit: 'M',
   },
   {
     id: 'phys-06',
-    name: 'Cowl Shock Impingement',
-    formula: 'x_imp = h/tan(μ_cowl)',
-    status: 'warn',
-    computed: '±3.2 mm',
-    target: 'cowl lip ±2mm',
-    tolerance: 2,
-    unit: 'mm',
+    name: 'Wall Temperature vs Material',
+    formula: 'T_aw = T∞·(1 + r·(γ−1)/2·M∞²),  r = 0.89',
+    status: A.thermal.verdict === 'ok' ? 'pass' : A.thermal.verdict === 'marginal' ? 'warn' : 'fail',
+    computed: `${Math.round(P.wallTemperatureK)} K`,
+    target: `≤ ${Math.round(A.thermal.serviceLimitK)} K (${A.thermal.material.name})`,
+    tolerance: 0,
+    unit: 'K',
   },
 ];
 
 export const SCRAMJET_INLET_GEOMETRY: GeometryParameter[] = [
   { id: 'geo-01', name: 'Inlet Capture Height', value: 205, unit: 'mm', min: 150, max: 300, locked: false },
   { id: 'geo-02', name: 'Inlet Capture Width', value: 210, unit: 'mm', min: 150, max: 300, locked: false },
-  { id: 'geo-03', name: 'Ramp 1 Angle', value: 7.2, unit: '°', min: 5.0, max: 12.0, locked: false },
-  { id: 'geo-04', name: 'Ramp 2 Angle', value: 5.8, unit: '°', min: 3.0, max: 9.0, locked: false },
+  { id: 'geo-03', name: 'Ramp 1 Angle', value: DESIGN_POINT.rampAnglesDeg[0], unit: '°', min: 5.0, max: 12.0, locked: false },
+  { id: 'geo-04', name: 'Ramp 2 Angle', value: DESIGN_POINT.rampAnglesDeg[1], unit: '°', min: 3.0, max: 9.0, locked: false },
   { id: 'geo-05', name: 'Cowl Height', value: 48, unit: 'mm', min: 30, max: 80, locked: false },
   { id: 'geo-06', name: 'Throat Width', value: 142, unit: 'mm', min: 100, max: 200, locked: true },
   { id: 'geo-07', name: 'Isolator Length', value: 380, unit: 'mm', min: 250, max: 600, locked: false },
@@ -100,16 +131,23 @@ export const SCRAMJET_INLET_GEOMETRY: GeometryParameter[] = [
   { id: 'geo-10', name: 'Cowl Lip Radius', value: 0.8, unit: 'mm', min: 0.3, max: 2.0, locked: false },
 ];
 
-export const SCRAMJET_INLET_VALIDATION: ValidationResult[] = [
-  { id: 'val-01', check: 'Mach Number Range', status: 'pass', computed: 'M∞=5.5', required: 'M∞>5.0', confidence: 0.98, standard: 'AIAA-2004-3351' },
-  { id: 'val-02', check: 'Total Pressure Recovery', status: 'pass', computed: 'η=0.873', required: 'η>0.850', confidence: 0.96, standard: 'MIL-E-5007D' },
-  { id: 'val-03', check: 'Mass Flow Capture Ratio', status: 'pass', computed: 'MFCR=0.94', required: 'MFCR>0.90', confidence: 0.94, standard: 'AIAA-2006-8134' },
-  { id: 'val-04', check: 'Cowl Shock Alignment', status: 'warn', computed: '+3.2mm off', required: '±2.0mm', confidence: 0.79, standard: 'NASA-CR-195446' },
-  { id: 'val-05', check: 'Ti-6Al-4V Temp Limit', status: 'pass', computed: 'T=1650K', required: 'T<1750K', confidence: 0.97, standard: 'AMS 4928' },
-  { id: 'val-06', check: 'Boundary Layer Thickness', status: 'pass', computed: 'δ=4.2mm', required: 'δ<6.0mm', confidence: 0.91, standard: 'AIAA-99-4878' },
-  { id: 'val-07', check: 'Isolator L/H Ratio', status: 'pass', computed: 'L/H=2.68', required: '2.5<L/H<3.5', confidence: 0.99, standard: 'AIAA-2001-1793' },
-  { id: 'val-08', check: 'Manufacturing Tolerances', status: 'pass', computed: 'All dims ±0.05mm', required: '±0.1mm', confidence: 0.95, standard: 'AS9100D' },
-];
+/**
+ * Validation rows — produced by the rule engine in `lib/inletDesign`.
+ *
+ * Two things changed on purpose:
+ *   • every row is a pure function of the design point, so moving a ramp angle
+ *     changes the verdict;
+ *   • rules that need CFD or a measured part report `unknown`, never `pass`.
+ */
+export const SCRAMJET_INLET_VALIDATION: ValidationResult[] = evaluateInletRules(A).map((r) => ({
+  id: r.id,
+  check: r.check,
+  status: r.status === 'unknown' ? 'pending' : r.status,
+  computed: r.computed,
+  required: r.required,
+  confidence: r.confidence,
+  standard: r.standard,
+}));
 
 // ── Agent Pipeline Steps ───────────────────────────────────────────────────────
 export const CAD_AGENT_STEPS: AgentStep[] = [
@@ -131,7 +169,7 @@ export const CAD_AGENT_STEPS: AgentStep[] = [
     status: 'complete',
     progress: 100,
     duration: 0.8,
-    output: 'θ₁=7.2°, θ₂=5.8° | M_iso=2.8 | π_c=0.873 ✓',
+    output: `θ₁=${DESIGN_POINT.rampAnglesDeg[0]}°, θ₂=${DESIGN_POINT.rampAnglesDeg[1]}° | M_iso=${P.isolatorMach.toFixed(2)} | π_c=${P.totalPressureRecovery.toFixed(3)} (ramps only) · not solved — no CFD has run`,
   },
   {
     id: 'step-03',
@@ -151,7 +189,7 @@ export const CAD_AGENT_STEPS: AgentStep[] = [
     status: 'complete',
     progress: 100,
     duration: 2.1,
-    output: '7/8 PASS | 1 WARN (cowl shock alignment ±3.2mm, tolerance ±2mm)',
+    output: `${SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'pass').length}/${SCRAMJET_INLET_VALIDATION.length} PASS · ${SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'pending').length} pending CFD/measurement`,
   },
   {
     id: 'step-05',
@@ -161,7 +199,7 @@ export const CAD_AGENT_STEPS: AgentStep[] = [
     status: 'complete',
     progress: 100,
     duration: 1.5,
-    output: 'Export package: scramjet_inlet_M5p5_v1.step (2.3MB) + design_report.pdf',
+    output: 'Simulated only — no artifact is produced until the CAD worker exists',
   },
   {
     id: 'step-06',
@@ -171,7 +209,7 @@ export const CAD_AGENT_STEPS: AgentStep[] = [
     status: 'complete',
     progress: 100,
     duration: 0.6,
-    output: 'CEP bundle: inlet_cep_v1.json | BC: P∞=1013Pa, T∞=216K, M=5.5 | Ready for OpenFOAM',
+    output: `CEP draft | M∞=${DESIGN_POINT.mach} · static p=${A.flight.staticPressurePa.toFixed(0)} Pa · T=${A.flight.staticTemperatureK.toFixed(1)} K · T₀=${A.flight.totalTemperatureK.toFixed(0)} K`, 
   },
 ];
 
@@ -249,29 +287,16 @@ export function generateConvergenceData(
 export const CONVERGENCE_DATA: ConvergencePoint[] = generateConvergenceData();
 
 // ── Pressure Distribution Along Ramp ─────────────────────────────────────────
-export const PRESSURE_DISTRIBUTION = [
-  { x: 0.0, p_p_inf: 1.0, cp: 0.0 },
-  { x: 0.05, p_p_inf: 1.8, cp: 0.063 },
-  { x: 0.10, p_p_inf: 2.9, cp: 0.156 },
-  { x: 0.15, p_p_inf: 4.8, cp: 0.311 },
-  { x: 0.20, p_p_inf: 5.2, cp: 0.343 },
-  { x: 0.25, p_p_inf: 6.1, cp: 0.421 },
-  { x: 0.30, p_p_inf: 7.4, cp: 0.531 },
-  { x: 0.35, p_p_inf: 9.8, cp: 0.734 },
-  { x: 0.40, p_p_inf: 11.2, cp: 0.851 },
-  { x: 0.45, p_p_inf: 12.1, cp: 0.926 },
-  { x: 0.50, p_p_inf: 13.8, cp: 1.067 },
-  { x: 0.55, p_p_inf: 15.4, cp: 1.201 },
-  { x: 0.60, p_p_inf: 16.1, cp: 1.258 },
-  { x: 0.65, p_p_inf: 16.8, cp: 1.316 },
-  { x: 0.70, p_p_inf: 17.2, cp: 1.350 },
-  { x: 0.75, p_p_inf: 17.6, cp: 1.383 },
-  { x: 0.80, p_p_inf: 18.1, cp: 1.424 },
-  { x: 0.85, p_p_inf: 18.4, cp: 1.449 },
-  { x: 0.90, p_p_inf: 18.3, cp: 1.441 },
-  { x: 0.95, p_p_inf: 18.2, cp: 1.433 },
-  { x: 1.00, p_p_inf: 18.4, cp: 1.449 },
-];
+/**
+ * Wall static-pressure distribution along the flowpath, DERIVED from the shock
+ * chain instead of a 21-row hand-typed array that peaked at p/p∞ = 18.4.
+ *
+ * The compression surface has two ramps at x ∈ (0, 0.35] and (0.35, 0.65]
+ * (fraction of inlet length), followed by the isolator. Static pressure jumps
+ * across each shock and is flat downstream of it.
+ */
+export const PRESSURE_DISTRIBUTION: { x: number; p_p_inf: number; cp: number }[] =
+  stagnantWallProfile(P, A.flight.mach);
 
 // ── Design Library ─────────────────────────────────────────────────────────────
 export const DESIGN_LIBRARY: DesignLibraryItem[] = [
@@ -281,7 +306,7 @@ export const DESIGN_LIBRARY: DesignLibraryItem[] = [
     type: 'scramjet-inlet',
     machRange: '4.5–6.5',
     status: 'validated',
-    eta_p: 0.873,
+    eta_p: P.totalPressureRecovery,
     tags: ['hypersonic', 'scramjet', 'propulsion'],
     created: '2026-05-12',
     version: 'v1.2.0',
@@ -345,7 +370,9 @@ export const DESIGN_LIBRARY: DesignLibraryItem[] = [
 
 // ── LLM Providers ─────────────────────────────────────────────────────────────
 export const LLM_PROVIDERS = [
-  { id: 'ollama', name: 'Ollama (Local)', model: 'llama3.2:70b', local: true, status: 'active' },
+  // NOTE: llama3.2 ships in 1B/3B/11B/90B variants — "llama3.2:70b" does not
+  // exist. Using a model id that can actually be pulled.
+  { id: 'ollama', name: 'Ollama (Local)', model: 'qwen2.5-coder:32b', local: true, status: 'active' },
   { id: 'llama.cpp', name: 'llama.cpp (Local)', model: 'mixtral-8x7b-Q8', local: true, status: 'ready' },
   { id: 'openai', name: 'OpenAI (BYOK)', model: 'o3', local: false, status: 'configured' },
   { id: 'anthropic', name: 'Anthropic (BYOK)', model: 'claude-opus-4', local: false, status: 'configured' },
@@ -392,6 +419,9 @@ export function generateParetoData(seed = 42): { dominated: ParetoPoint[]; paret
 }
 
 export const PARETO_DATA = generateParetoData();
+
+// ── Derived design analysis (re-exported so panels never recompute it) ────────
+export { DEFAULT_ANALYSIS as SCRAMJET_DESIGN_ANALYSIS };
 
 // ── System Metrics ─────────────────────────────────────────────────────────────
 export const SYSTEM_METRICS = {

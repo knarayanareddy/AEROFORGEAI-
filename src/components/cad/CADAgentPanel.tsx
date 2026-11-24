@@ -7,11 +7,13 @@ import {
 } from 'lucide-react';
 import {
   SCRAMJET_INLET_REQUIREMENTS,
-  SCRAMJET_INLET_PHYSICS,
   SCRAMJET_INLET_GEOMETRY,
-  SCRAMJET_INLET_VALIDATION,
   CAD_AGENT_STEPS,
 } from '../../data/aeroforgeSimulationData';
+import { analyseInlet, DESIGN_POINT, evaluateInletRules } from '../../lib/inletDesign';
+import { ProvenanceChip } from '../common/Provenance';
+import { parseDesignIntent, describeIntent, type DesignIntent } from '../../lib/designIntent';
+import { getMaterial } from '../../lib/materials';
 import { formatDuration } from '../../utils/design';
 import type { AgentStep, GeometryParameter } from '../../types/aeroforge';
 
@@ -456,10 +458,10 @@ const GeometryParametersPanel: React.FC<{
 );
 
 // ── Physics Constraints Panel ─────────────────────────────────────────────────
-const PhysicsConstraintsPanel: React.FC = () => {
+const PhysicsConstraintsPanel: React.FC<{ rules: ReturnType<typeof evaluateInletRules> }> = ({ rules }) => {
   return (
     <div className="space-y-2">
-      {SCRAMJET_INLET_PHYSICS.map((c) => (
+      {rules.map((c) => (
         <div
           key={c.id}
           className="flex items-start gap-3 p-3 rounded-lg"
@@ -468,21 +470,28 @@ const PhysicsConstraintsPanel: React.FC = () => {
           <div
             className="w-2 h-2 rounded-full mt-1 flex-shrink-0"
             style={{
-              background: c.status === 'pass' ? '#00ff88' : c.status === 'warn' ? '#ffaa00' : '#ff3b5c',
+                background:
+                c.status === 'pass'
+                  ? '#00ff88'
+                  : c.status === 'warn' || c.status === 'unknown'
+                    ? '#ffaa00'
+                    : '#ff3b5c',
             }}
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium" style={{ color: '#e8f4ff' }}>{c.name}</span>
-              <span className={`af-badge-${c.status}`}>{c.status.toUpperCase()}</span>
+              <span className="text-xs font-medium" style={{ color: '#e8f4ff' }}>{c.check}</span>
+              <span className={`af-badge-${c.status === 'unknown' ? 'warn' : c.status}`}>
+                {c.status === 'unknown' ? 'N/A' : c.status.toUpperCase()}
+              </span>
             </div>
-            <div className="text-xs font-mono" style={{ color: '#7688a6' }}>{c.formula}</div>
+            <div className="text-xs" style={{ color: '#8ba8cc' }}>{c.note}</div>
             <div className="flex gap-3 mt-1">
               <span className="text-xs"><span style={{ color: '#7688a6' }}>Computed: </span>
                 <span style={{ color: '#00d4ff' }}>{c.computed}</span>
               </span>
-              <span className="text-xs"><span style={{ color: '#7688a6' }}>Target: </span>
-                <span style={{ color: '#8ba8cc' }}>{c.target}</span>
+              <span className="text-xs"><span style={{ color: '#7688a6' }}>Required: </span>
+                <span style={{ color: '#8ba8cc' }}>{c.required}</span>
               </span>
             </div>
           </div>
@@ -496,6 +505,13 @@ const PhysicsConstraintsPanel: React.FC = () => {
 const CADAgentPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pipeline' | 'geometry' | 'physics' | 'validation'>('pipeline');
   const [geoParams, setGeoParams] = useState(SCRAMJET_INLET_GEOMETRY);
+  // The design point is the panel state; every displayed number is derived from
+  // it, so moving a ramp slider re-solves the shock chain immediately.
+  const [analysis, setAnalysis] = useState(() => analyseInlet(DESIGN_POINT));
+  // The prompt is no longer discarded: it is parsed into a design point, the
+  // physics is re-solved from it, and the result is shown row by row.
+  const [intent, setIntent] = useState<DesignIntent | null>(null);
+  const rules = evaluateInletRules(analysis);
   const [agentRunning, setAgentRunning] = useState(false);
   const [pipelineComplete, setPipelineComplete] = useState(true);
   const [steps, setSteps] = useState<AgentStep[]>(CAD_AGENT_STEPS);
@@ -512,22 +528,61 @@ const CADAgentPanel: React.FC = () => {
   };
 
   const handleParamChange = (id: string, value: number) => {
-    setGeoParams(prev => prev.map(p => p.id === id ? { ...p, value } : p));
+    const next = geoParams.map(p => (p.id === id ? { ...p, value } : p));
+    setGeoParams(next);
     setPipelineComplete(false);
+
+    // Re-derive the whole physics chain from the new geometry. Ramp angles are
+    // geo-03/geo-04; anything else leaves the shock chain unchanged.
+    const ramp1 = next.find(p => p.id === 'geo-03')?.value ?? DESIGN_POINT.rampAnglesDeg[0];
+    const ramp2 = next.find(p => p.id === 'geo-04')?.value ?? DESIGN_POINT.rampAnglesDeg[1];
+    setAnalysis(analyseInlet({ ...DESIGN_POINT, rampAnglesDeg: [ramp1, ramp2] }));
   };
 
   const handleToggleLock = (id: string) => {
     setGeoParams(prev => prev.map(p => p.id === id ? { ...p, locked: !p.locked } : p));
   };
 
-  const handleRunAgent = (_prompt: string) => {
+  const handleRunAgent = (prompt: string) => {
     if (agentRunning) return; // re-entry guard: one pipeline at a time
+
+    // 1. Parse the prompt into a checked design point. Fields the parser could
+    //    not find are reported as defaults rather than invented.
+    const parsed = parseDesignIntent(prompt);
+    setIntent(parsed);
+
+    // 2. Re-solve the physics from it.
+    const next = analyseInlet(parsed.design);
+    setAnalysis(next);
+
+    // 3. Reflect the parsed geometry in the parameter sliders, so the numbers
+    //    on screen and the geometry drawn beside them cannot diverge.
+    setGeoParams(prev =>
+      prev.map(p => {
+        if (p.id === 'geo-03') return { ...p, value: parsed.design.rampAnglesDeg[0] ?? p.value };
+        if (p.id === 'geo-04') return { ...p, value: parsed.design.rampAnglesDeg[1] ?? p.value };
+        return p;
+      }),
+    );
+
     setAgentRunning(true);
     setPipelineComplete(false);
-    // Reset steps to pending
     setSteps(prev => prev.map((s, i) => ({ ...s, status: i === 0 ? 'running' : 'pending', progress: 0 })));
 
-    // Simulate progressive completion
+    // 4. The timeline below is a *simulated* progress animation. It is labelled
+    //    as such on screen; no CAD kernel runs. Its step outputs are replaced
+    //    with the values this particular prompt produced, so the animation at
+    //    least narrates the real calculation.
+    const outputs: Record<string, string> = {
+      'step-01': `${parsed.mach.source === 'parsed' ? 'Read' : 'Defaulted'} M ${parsed.design.mach} · ${(parsed.design.altitudeM / 1000).toFixed(1)} km · ${parsed.design.rampAnglesDeg.length} ramps`,
+      'step-02': `Shock chain attached: M_iso ${next.performance.isolatorMach.toFixed(2)}, p/p∞ ${next.performance.pressureRatio.toFixed(2)}`,
+      'step-03': `π = ${next.performance.totalPressureRecovery.toFixed(4)} across ${next.performance.chain.steps.length} shocks`,
+      'step-04': `T_aw ${Math.round(next.performance.wallTemperatureK)} K vs ${getMaterial(parsed.design.materialId)?.name ?? parsed.design.materialId} limit`,
+      'step-05': `${next.thermal.verdict === 'fail' ? 'Material FAILS the wall check' : 'Material within allowables'}`,
+      'step-06': `${evaluateInletRules(next).filter(r => r.status === 'pass').length} rules pass of ${evaluateInletRules(next).length}`,
+    };
+    setSteps(prev => prev.map(s => ({ ...s, output: outputs[s.id] ?? s.output })));
+
     let idx = 0;
     const runStep = () => {
       if (idx >= CAD_AGENT_STEPS.length) {
@@ -561,9 +616,9 @@ const CADAgentPanel: React.FC = () => {
     { id: 'validation', label: 'Validation', icon: <CheckCircle size={12} /> },
   ];
 
-  const passCount = SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'pass').length;
-  const warnCount = SCRAMJET_INLET_VALIDATION.filter(v => v.status === 'warn').length;
-  const avgConf = (SCRAMJET_INLET_VALIDATION.reduce((a, v) => a + v.confidence, 0) / SCRAMJET_INLET_VALIDATION.length * 100).toFixed(1);
+  const passCount = rules.filter(v => v.status === 'pass').length;
+  const warnCount = rules.filter(v => v.status === 'warn' || v.status === 'unknown').length;
+  const avgConf = (rules.reduce((a, v) => a + v.confidence, 0) / rules.length * 100).toFixed(1);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
@@ -588,9 +643,54 @@ const CADAgentPanel: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={14} style={{ color: '#00d4ff' }} />
             <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Intent Parser</span>
-            <span className="af-badge-info ml-auto">Ollama llama3.2:70b</span>
+            <ProvenanceChip
+              source="derived"
+              detail="Deterministic in-browser parser (src/lib/designIntent.ts). No LLM is called; Phase 1 replaces this with a schema-validated endpoint."
+            />
+            <span className="af-badge-info ml-auto">local parser · no LLM</span>
           </div>
           <TypewriterPrompt onSubmit={handleRunAgent} disabled={agentRunning} />
+
+          {intent && (
+            <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid rgba(0,212,255,0.10)' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold" style={{ color: '#e8f4ff' }}>
+                  Parsed intent
+                </span>
+                <span className="text-xs font-mono ml-auto" style={{ color: '#00d4ff' }}>
+                  {describeIntent(intent)}
+                </span>
+              </div>
+              {([
+                ['Mach', String(intent.mach.value), intent.mach],
+                ['Altitude', `${(intent.altitudeM.value / 1000).toFixed(1)} km`, intent.altitudeM],
+                ['Ramps', intent.rampAnglesDeg.value.map(v => `${v}°`).join(' + '), intent.rampAnglesDeg],
+                ['Material', getMaterial(intent.materialId.value)?.name ?? intent.materialId.value, intent.materialId],
+              ] as const).map(([label, value, field]) => (
+                <div key={label} className="flex items-start gap-2 text-xs">
+                  <span style={{ color: '#7688a6', width: 66, flexShrink: 0 }}>{label}</span>
+                  <span className="font-mono" style={{ color: '#e8f4ff' }}>{value}</span>
+                  {field.source === 'parsed' ? (
+                    <span title={`read from "${field.evidence}"`} style={{ color: '#00ff88', fontSize: 10 }}>
+                      parsed
+                    </span>
+                  ) : (
+                    <span title={field.reason} style={{ color: '#ffaa00', fontSize: 10 }} className="cursor-help">
+                      default ⓘ
+                    </span>
+                  )}
+                  {field.source === 'parsed' && field.reason && (
+                    <span style={{ color: '#7688a6', fontSize: 10 }} className="italic">{field.reason}</span>
+                  )}
+                </div>
+              ))}
+              {intent.rejected.map(r => (
+                <div key={r.field} className="text-xs" style={{ color: '#ffaa00' }}>
+                  ⚠ ignored “{r.text}” — {r.reason}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -631,7 +731,7 @@ const CADAgentPanel: React.FC = () => {
                 onToggleLock={handleToggleLock}
               />
             )}
-            {activeTab === 'physics' && <PhysicsConstraintsPanel />}
+                        {activeTab === 'physics' && <PhysicsConstraintsPanel rules={rules} />}
             {activeTab === 'validation' && (
               <div className="space-y-2">
                 <div className="grid grid-cols-3 gap-3 mb-4">
@@ -648,7 +748,7 @@ const CADAgentPanel: React.FC = () => {
                     <div className="text-xs" style={{ color: '#7688a6' }}>AVG CONF.</div>
                   </div>
                 </div>
-                {SCRAMJET_INLET_VALIDATION.map((v) => (
+                {rules.map((v) => (
                   <div
                     key={v.id}
                     className="p-3 rounded-lg"
@@ -697,12 +797,45 @@ const CADAgentPanel: React.FC = () => {
         </div>
 
         {/* KPI Cards */}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: '#e8f4ff' }}>Derived performance</span>
+          <ProvenanceChip source="derived" detail="Exact oblique-shock chain + ISA, evaluated live from the ramp angles. Not a CFD result." />
+          <span className="text-xs ml-auto" style={{ color: '#7688a6', fontSize: '10px' }}>
+            re-solved on every slider move
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Pressure Recovery', value: '87.3%', target: '>85%', ok: true, color: '#00ff88' },
-            { label: 'Mass Flow Rate', value: '12.1 kg/s', target: '12 kg/s', ok: true, color: '#00d4ff' },
-            { label: 'Total Compression', value: '18.4×', target: '15–22×', ok: true, color: '#9f5ffb' },
-            { label: 'Cowl Shock Align', value: '±3.2mm', target: '±2.0mm', ok: false, color: '#ffaa00' },
+            {
+              label: 'Total Pressure Recovery (ramps)',
+              value: `${(analysis.performance.totalPressureRecovery * 100).toFixed(1)}%`,
+              target: '>85%',
+              ok: analysis.performance.totalPressureRecovery >= 0.85,
+              color: '#00ff88',
+            },
+            {
+              label: 'Isolator Entry Mach',
+              value: analysis.performance.isolatorMach.toFixed(2),
+              target: '2.5–3.5',
+              ok:
+                analysis.performance.isolatorMach >= 2.5 &&
+                analysis.performance.isolatorMach <= 3.5,
+              color: '#00d4ff',
+            },
+            {
+              label: 'Static Pressure Ratio',
+              value: `${analysis.performance.pressureRatio.toFixed(2)}×`,
+              target: 'design dependent',
+              ok: analysis.performance.pressureRatio > 1,
+              color: '#9f5ffb',
+            },
+            {
+              label: 'Wall Temp vs Allowable',
+              value: `${Math.round(analysis.performance.wallTemperatureK)} K`,
+              target: `≤ ${Math.round(analysis.thermal.serviceLimitK)} K`,
+              ok: analysis.thermal.verdict === 'ok',
+              color: '#ffaa00',
+            },
           ].map((kpi) => (
             <div
               key={kpi.label}

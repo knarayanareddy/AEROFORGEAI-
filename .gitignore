@@ -12,3 +12,13 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Review bundle download cache (Google Drive)
+google_drive/
+
+# Generated CI artefacts
+reference_bundle.zip
+
+# Verifiable reference bundle, regenerable via scripts/build-reference-bundle.ts
+docs/artifacts/*
+!docs/artifacts/README.md

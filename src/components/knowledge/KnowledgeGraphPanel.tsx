@@ -223,7 +223,11 @@ const GraphRAGQuery: React.FC = () => {
     const id = setTimeout(() => {
       if (seq !== seqRef.current) return; // a newer query superseded this one
       const match = SAMPLE_QUERIES.find(s => s.q === q);
-      const res = match?.result ?? `Graph traversal: Found ${Math.floor(Math.random() * 50 + 10)} related nodes across aerospace knowledge base`;
+      // A query the fixture does not cover is reported as uncovered. The old
+      // fallback invented a node count, which read as a retrieval result.
+      const res = match?.result
+        ?? `No result for “${q}”. This demo ships ${SAMPLE_QUERIES.length} pre-answered queries `
+          + `and has no retrieval backend, so it cannot search for anything else.`;
       setResult(res);
       setHistory(prev => [{ q, result: res }, ...prev.slice(0, 4)]);
       setLoading(false);
