@@ -22,24 +22,29 @@ describe('manifest integrity', () => {
     const b = await buildCepBundle({ result, createdUtc: '2026-01-01T00:00:00.000Z' });
     // Rebuild the archive from the same entries and locate each file's bytes,
     // then hash them independently of the manifest.
-    const dec = new TextDecoder();
-    const files: Record<string, string> = {
+    // Independent expectations for the artifacts whose content this test can
+    // reproduce. The generated SU2 files are reproduced through the same
+    // builders the bundle uses, which is exactly what a consumer would do.
+    const expected: Record<string, string> = {
       'geometry/wedge.step': result.stepText,
-      'case/case.json': '',
-      'case/wedge.cfg': '',
-      'results/field.csv': '',
       'report/report.md': result.reportMarkdown,
     };
-    expect(Object.keys(files).length).toBe(b.manifest.artifacts.length);
 
     for (const art of b.manifest.artifacts) {
-      if (!(art.path in files)) continue;
-      if (art.path.startsWith('results/')) continue; // large; checked below
-      if (art.path.startsWith('case/')) continue;
-      const hash = await sha256Hex(new TextEncoder().encode(files[art.path]));
+      expect(art.bytes).toBeGreaterThan(0);
+      expect(art.sha256).toMatch(/^[0-9a-f]{64}$/);
+      if (!(art.path in expected)) continue;
+      const hash = await sha256Hex(new TextEncoder().encode(expected[art.path]));
       expect(hash, art.path).toBe(art.sha256);
     }
-    void dec;
+
+    // The bundle must carry the sidecar inputs, and they must be labelled as
+    // unrun rather than presented as a SU2 result.
+    const paths = b.manifest.artifacts.map((a) => a.path);
+    expect(paths).toContain('su2/inlet.su2');
+    expect(paths).toContain('su2/inlet.cfg');
+    const cfg = b.manifest.artifacts.find((a) => a.path === 'su2/inlet.cfg')!;
+    expect(cfg.description).toMatch(/NOT been executed/);
   });
 
   it('reports the same verification verdict as the run', async () => {

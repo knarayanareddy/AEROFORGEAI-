@@ -21,7 +21,17 @@ import zipfile
 REQUIRED = {"manifest.json", "geometry/wedge.step", "report/report.md"}
 
 
-def main(path: str) -> int:
+def main(path: str, expect: str = "consistent") -> int:
+    """Verify a bundle.
+
+    `expect` lets CI assert a specific verdict rather than only consistency:
+      consistent (default) — the flag must agree with the reported errors
+      pass                 — the bundle must report a PASS verdict
+      fail                 — the bundle must report a FAIL verdict
+    The last is not a joke: a bundle produced at a coarse grid SHOULD fail the
+    2 % criterion, and a pipeline that quietly reported PASS there would be the
+    bug this check exists to catch.
+    """
     ok = True
 
     try:
@@ -98,6 +108,15 @@ def main(path: str) -> int:
             else:
                 print("ok    'passed' flag agrees with the reported errors")
 
+        if expect != "consistent":
+            want = expect == "pass"
+            if bool(v["passed"]) != want:
+                print(f"FAIL  expected a {expect.upper()} verdict, manifest reports "
+                      f"{'PASS' if v['passed'] else 'FAIL'}")
+                ok = False
+            else:
+                print(f"ok    verdict is {expect.upper()} as expected")
+
     # The bundle hash cannot be inside the bundle; print it for external pinning.
     with open(path, "rb") as fh:
         print(f"info  bundle sha256 = {hashlib.sha256(fh.read()).hexdigest()}")
@@ -107,7 +126,12 @@ def main(path: str) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(2)
-    sys.exit(main(sys.argv[1]))
+    expect = "consistent"
+    if "--expect" in sys.argv:
+        i = sys.argv.index("--expect")
+        expect = sys.argv[i + 1]
+        del sys.argv[i : i + 2]
+    sys.exit(main(sys.argv[1], expect))

@@ -95,7 +95,77 @@ jobs:
       - name: Build a bundle and verify it with Python's zipfile
         run: |
           npx tsx scripts/build-reference-bundle.ts
-          python3 oracle/verify_bundle.py reference_bundle.zip
+          # 160x100 is deliberately coarse: it should report a FAIL verdict, and
+          # the verifier asserts both that the flag agrees with the errors and
+          # that the verdict is what we expect. A coarse grid quietly reporting
+          # PASS is the failure mode this guards.
+          python3 oracle/verify_bundle.py reference_bundle.zip --expect fail
+      - name: Confirm the bundle carries SU2 inputs, verified independently
+        run: |
+          python3 - <<'PY'
+          import json, zipfile
+          z = zipfile.ZipFile('reference_bundle.zip')
+          m = json.loads(z.read('manifest.json'))
+          paths = [a['path'] for a in m['artifacts']]
+          assert 'su2/inlet.su2' in paths and 'su2/inlet.cfg' in paths, paths
+          cfg = z.read('su2/inlet.cfg').decode()
+          assert 'has NOT been run' in cfg
+          print('bundle carries SU2 inputs and labels them unrun')
+          PY
+
+  su2:
+    name: SU2 case schema (vs v8.6.0 source)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+
+      - name: Fetch the SU2 v8.6.0 source
+        # The released binaries live on objects.githubusercontent.com; the source
+        # tarball does not, and the source is what carries the option registry.
+        run: |
+          curl -sSL -o su2-src.zip https://codeload.github.com/su2code/SU2/zip/refs/tags/v8.6.0
+          unzip -q su2-src.zip
+
+      - name: Re-extract the schema and check it matches the committed one
+        # If SU2 changes an option name, this fails here rather than silently
+        # producing case files that SU2 ignores.
+        run: |
+          cp oracle/su2_schema.json /tmp/committed.json
+          python oracle/su2_schema.py --extract SU2-8.6.0
+          python - <<'PY'
+          import json
+          a = json.load(open('/tmp/committed.json'))
+          b = json.load(open('oracle/su2_schema.json'))
+          assert a['options'] == b['options'], 'option registry drifted from committed schema'
+          assert a['values'] == b['values'], 'enum values drifted from committed schema'
+          print(f"schema matches SU2 source: {len(b['options'])} options, {len(b['values'])} enum values")
+          PY
+
+      - name: Generate a case and mesh, then validate them
+        run: |
+          npx tsx scripts/build-su2-case.ts
+          python oracle/su2_schema.py inlet.cfg inlet.su2
+
+      - name: Reject a deliberately broken case
+        # A validator that accepts everything is worse than none. This proves the
+        # check bites before we rely on the green from the step above.
+        run: |
+          sed 's/^CFL_NUMBER= 6.0/CFL_NUBMER= 6.0/' inlet.cfg > broken.cfg
+          if python oracle/su2_schema.py broken.cfg; then
+            echo "validator accepted a misspelled option - check is not working"
+            exit 1
+          else
+            echo "validator correctly rejected the misspelled option"
+          fi
 
   oracle:
     name: Independent cross-check (numpy oracle)

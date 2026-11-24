@@ -9,6 +9,11 @@
 
 import { buildZip, sha256Hex, type ZipEntry } from './zip';
 import type { PipelineResult } from './phase1Pipeline';
+import { inletMeshFor } from './inletSolve';
+import { DEFAULT_INLET } from './inlet';
+import { writeSu2Mesh } from './su2Mesh';
+import { writeSu2Case, su2StatusNote } from './su2Case';
+import { atmosphereAt } from './atmosphere';
 
 export const CEP_VERSION = '1.0';
 
@@ -170,6 +175,15 @@ export async function buildCepBundle(input: BundleInput): Promise<CepBundle> {
   const { result: r } = input;
   const createdUtc = input.createdUtc ?? new Date().toISOString();
 
+  // Phase 3 sidecar inputs, built from the shared geometry helper.
+  const su2MeshObj = inletMeshFor(DEFAULT_INLET, 120, 60);
+  const su2Mesh = writeSu2Mesh(su2MeshObj);
+  const su2Case = writeSu2Case({
+    design: DEFAULT_INLET,
+    atmosphere: atmosphereAt(DEFAULT_INLET.altitudeM),
+    meshFilename: 'inlet.su2',
+  });
+
   const files: { path: string; data: string; mediaType: string; description: string }[] = [
     {
       path: 'geometry/wedge.step',
@@ -200,6 +214,24 @@ export async function buildCepBundle(input: BundleInput): Promise<CepBundle> {
       data: r.reportMarkdown,
       mediaType: 'text/markdown',
       description: 'Verification report with the verdict and its limits',
+    },
+    // ── Phase 3 sidecar inputs ───────────────────────────────────────────
+    // The mesh and case are generated from the same geometry the browser
+    // solver used, so a SU2 run would be comparable rather than merely similar.
+    // They are UNRUN: SU2 is not available where these were produced (its
+    // release binaries are served from a host this environment cannot reach).
+    // The case file says so in its own header.
+    {
+      path: 'su2/inlet.su2',
+      data: su2Mesh,
+      mediaType: 'application/octet-stream',
+      description: 'SU2 ASCII mesh of the Phase 2 inlet (markers: wall, far_top, inlet, outlet)',
+    },
+    {
+      path: 'su2/inlet.cfg',
+      data: su2Case,
+      mediaType: 'text/plain',
+      description: `SU2 v8.6 case for the inlet. ${su2StatusNote()}`,
     },
   ];
 
