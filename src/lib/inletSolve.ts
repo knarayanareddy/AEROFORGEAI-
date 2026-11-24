@@ -83,6 +83,29 @@ export interface InletResult {
 const DEFAULT_NX = 120;
 const DEFAULT_NY = 60;
 
+/**
+ * Build the inlet mesh for a design.
+ *
+ * Shared with the SU2 exporter so the mesh written for SU2 is the same mesh the
+ * browser solver ran on — otherwise "exported from the validated case" would be
+ * a claim about a different geometry.
+ */
+export function inletMeshFor(design: InletDesign, nx: number, ny: number) {
+  const meshDesign: MeshDesign = {
+    rampAnglesDeg: design.rampAnglesDeg,
+    rampLengthsM: design.rampLengthsM,
+    cowlStartM: design.rampLengthsM[0] * 1.35,
+    lipHeightM: lipHeightOf(design),
+    cowlAngleDeg: design.cowlAngleDeg,
+    isolatorHeightM: design.isolatorHeightM,
+    isolatorLengthM: design.isolatorLengthM,
+    upstreamM: 0.6,
+    nx,
+    ny,
+  };
+  return buildInletMesh(meshDesign);
+}
+
 export function solveInlet(opts: InletSolveOptions): InletResult {
   const d = opts.design;
   const nx = opts.nx ?? DEFAULT_NX;
@@ -92,20 +115,7 @@ export function solveInlet(opts: InletSolveOptions): InletResult {
   const atm = atmosphereAt(d.altitudeM);
   const fs = freestreamFrom(atm.pressurePa, atm.temperatureK, d.mach);
 
-  const meshDesign: MeshDesign = {
-    rampAnglesDeg: d.rampAnglesDeg,
-    rampLengthsM: d.rampLengthsM,
-    cowlStartM: d.rampLengthsM[0] * 1.35,
-    lipHeightM: lipHeightOf(d),
-    cowlAngleDeg: d.cowlAngleDeg,
-    isolatorHeightM: d.isolatorHeightM,
-    isolatorLengthM: d.isolatorLengthM,
-    upstreamM: 0.6,
-    nx,
-    ny,
-  };
-
-  const mesh = buildInletMesh(meshDesign);
+  const mesh = inletMeshFor(d, nx, ny);
   void buildMetrics; // metrics already built inside buildInletMesh
 
   const result = runEuler(mesh.grid, mesh.metrics, fs, {

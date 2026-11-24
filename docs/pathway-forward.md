@@ -344,7 +344,27 @@ the three failed extraction strategies and the two geometry findings, in
 This is exactly where the structured-grid approach stops earning its keep, which
 is the trigger for the SU2 sidecar in Phase 3.
 
-### Phase 3–4
+### Phase 3 — SU2 sidecar
+
+**Outcome: inputs built and validated against SU2 v8.6.0's own source; no SU2
+solution exists.**
+
+SU2's prebuilt binaries are served from `objects.githubusercontent.com`, which this
+environment cannot reach, and there is no PyPI distribution. Rather than write an
+adapter that shells out to a solver that is not there, this phase delivers what can
+actually be verified: a case and mesh writer whose 33 config keys are checked
+against the 770-option registry mined from the SU2 v8.6.0 source, with the schema
+re-extracted and diffed in CI, and a mesh whose quad ordering is asserted against
+`CQuadrilateral::Change_Orientation()`.
+
+Every artifact says it has not been run, in the file, in the manifest and in the UI.
+Full record, including the precise verification-status table and what it would take
+to close the gap, in [`phase-3.md`](./phase-3.md).
+
+The isolator itself is still unmodelled. A shock train needs RANS, a wall-resolved
+mesh and a back-pressure outlet — a different problem, not a config change.
+
+### Phase 4
 
 As the roadmap table above. Two sequencing notes I would add:
 

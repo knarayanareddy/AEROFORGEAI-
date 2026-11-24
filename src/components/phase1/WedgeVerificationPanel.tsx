@@ -15,6 +15,11 @@ import type { PipelineResult } from '../../lib/phase1Pipeline';
 import { ProvenanceChip } from '../common/Provenance';
 import { useWedgeSolve } from '../../hooks/useWedgeSolve';
 import { buildCepBundle, describeBundle } from '../../lib/cepBundle';
+import { inletMeshFor } from '../../lib/inletSolve';
+import { DEFAULT_INLET } from '../../lib/inlet';
+import { writeSu2Mesh } from '../../lib/su2Mesh';
+import { writeSu2Case, su2StatusNote } from '../../lib/su2Case';
+import { atmosphereAt } from '../../lib/atmosphere';
 
 const STAGE_LABELS: Record<string, string> = {
   flight: 'Flight condition',
@@ -64,6 +69,25 @@ export const WedgeVerificationPanel: React.FC = () => {
       setBundleNote(`Bundle failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBundling(false);
+    }
+  };
+
+  const downloadSu2 = (kind: 'mesh' | 'case') => {
+    // The mesh is built with the same helper the solver used, so what leaves
+    // the browser is the geometry that was actually converged on.
+    const mesh = inletMeshFor(DEFAULT_INLET, 120, 60);
+    if (kind === 'mesh') {
+      download(writeSu2Mesh(mesh), 'inlet.su2', 'application/octet-stream');
+    } else {
+      download(
+        writeSu2Case({
+          design: DEFAULT_INLET,
+          atmosphere: atmosphereAt(DEFAULT_INLET.altitudeM),
+          meshFilename: 'inlet.su2',
+        }),
+        'inlet.cfg',
+        'text/plain',
+      );
     }
   };
 
@@ -280,6 +304,40 @@ export const WedgeVerificationPanel: React.FC = () => {
               <Package size={12} /> {bundling ? 'hashing…' : 'CEP bundle (.zip)'}
             </button>
           </div>
+
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(118,136,166,0.18)' }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs font-semibold" style={{ color: '#7688a6', fontSize: 10 }}>
+                P3 · SU2 SIDECAR INPUTS
+              </span>
+              <span
+                className="px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(255,170,0,0.12)', border: '1px solid rgba(255,170,0,0.3)', color: '#ffaa00', fontSize: 9 }}
+              >
+                NOT RUN
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => downloadSu2('mesh')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: 'rgba(118,136,166,0.10)', border: '1px solid rgba(118,136,166,0.30)', color: '#a9b8d0' }}
+              >
+                <Download size={12} /> inlet.su2
+              </button>
+              <button
+                onClick={() => downloadSu2('case')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: 'rgba(118,136,166,0.10)', border: '1px solid rgba(118,136,166,0.30)', color: '#a9b8d0' }}
+              >
+                <Download size={12} /> inlet.cfg
+              </button>
+            </div>
+            <p className="mt-1.5" style={{ color: '#7688a6', fontSize: 10, lineHeight: 1.4 }}>
+              {su2StatusNote()}
+            </p>
+          </div>
+
           {bundleNote && (
             <div className="text-xs font-mono mt-2" style={{ color: '#7688a6', fontSize: 10 }}>
               {bundleNote}
@@ -349,6 +407,21 @@ export const WedgeVerificationPanel: React.FC = () => {
           β {v.betaDeg?.toFixed(2)}° vs {v.betaExactDeg?.toFixed(2)}°
         </div>
       )}
+
+      {/* Always visible, not gated on a run: the caveat has to be in front of
+          the reader before the downloads are, not after. */}
+      <div className="af-glass-card p-3 mt-3" style={{ border: '1px solid rgba(255,170,0,0.22)' }}>
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={12} style={{ color: '#ffaa00' }} />
+          <span className="text-xs font-semibold" style={{ color: '#ffd27a', fontSize: 10 }}>
+            P3 SU2 SIDECAR — NOT RUN
+          </span>
+        </div>
+        <p className="mt-1" style={{ color: '#7688a6', fontSize: 10, lineHeight: 1.45 }}>
+          {su2StatusNote()} The case file&apos;s option names are checked against the
+          SU2 v8.6.0 registry in CI, but no flow solution has been produced by SU2.
+        </p>
+      </div>
     </div>
   );
 };
