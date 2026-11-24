@@ -312,8 +312,20 @@ def hllc_vector(UL: np.ndarray, UR: np.ndarray, nx: np.ndarray, ny: np.ndarray):
     return F, speed
 
 
-def solve(mesh: WedgeMesh, fs: dict, cfl: float = 0.9, max_iter: int = 12_000, tol: float = 1e-5):
-    """Global-time-step FV solver. Slower than local time stepping, but simple."""
+def solve(
+    mesh: WedgeMesh,
+    fs: dict,
+    cfl: float = 0.9,
+    max_iter: int = 12_000,
+    tol: float = 1e-5,
+    progress: bool = True,
+):
+    """Global-time-step FV solver. Slower than local time stepping, but simple.
+
+    `progress` controls the iteration trace. It is suppressed in --json mode:
+    the trace used to go to stdout regardless, which made the redirected output
+    invalid JSON. Anything machine-readable must be the only thing on stdout.
+    """
     nx, ny = mesh.nx, mesh.ny
     g = GAMMA
 
@@ -430,10 +442,11 @@ def solve(mesh: WedgeMesh, fs: dict, cfl: float = 0.9, max_iter: int = 12_000, t
             ref = res
         ratio = res / ref
         resid_hist.append(ratio)
-        if it % 100 == 0:
+        if progress and it % 100 == 0:
             print(f"  iter {it:5d}  residual {ratio:.3e}", flush=True)
         if ratio < tol:
-            print(f"  converged at {it} in {ratio:.3e}", flush=True)
+            if progress:
+                print(f"  converged at {it} in {ratio:.3e}", flush=True)
             break
 
     r, uu, vv, pp = primitives(W)
@@ -498,7 +511,10 @@ def main() -> None:
         args.theta, args.nx, args.ny, chord=1.0, height=height, upstream=max(0.3, height * 0.9)
     )
 
-    r, uu, vv, pp, hist = solve(mesh, fs, cfl=args.cfl, max_iter=args.max_iter)
+    # In --json mode stdout is the machine-readable payload and nothing else.
+    r, uu, vv, pp, hist = solve(
+        mesh, fs, cfl=args.cfl, max_iter=args.max_iter, progress=not args.json
+    )
     beta, prat = extract(r, uu, vv, pp, mesh, args.theta)
 
     out = {

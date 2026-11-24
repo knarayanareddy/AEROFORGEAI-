@@ -119,6 +119,9 @@ jobs:
           python oracle/euler_oracle.py \
             --theta 10 --mach 5.5 --nx 360 --ny 220 --max-iter 20000 \
             --json > oracle_result.json
+          # Fail loudly here rather than in the assertion below: if stdout ever
+          # carries anything but JSON again, the error message should say so.
+          python -c "import json; json.load(open('oracle_result.json')); print('oracle output is valid JSON')"
           cat oracle_result.json
 
       - name: Assert agreement with theory within 3 %
