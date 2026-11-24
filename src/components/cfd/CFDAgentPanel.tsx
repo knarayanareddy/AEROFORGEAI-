@@ -8,6 +8,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, AreaChart, Area
 } from 'recharts';
+import { DEFAULT_ANALYSIS as A } from '../../lib/inletDesign';
+import { pressureCoefficient } from '../../lib/obliqueShock';
+import { ProvenanceChip } from '../common/Provenance';
 import {
   CONVERGENCE_DATA, PRESSURE_DISTRIBUTION,
   CFD_AGENT_STEPS
@@ -99,7 +102,9 @@ const MachContourViz: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none p-2">
         <div className="flex justify-between items-start">
           <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.6)' }}>M∞=5.5</div>
-          <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.6)' }}>ISOLATOR M≈2.8</div>
+          <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            ISOLATOR M≈{A.performance.isolatorMach.toFixed(1)}
+          </div>
         </div>
         <div className="absolute bottom-2 left-2 text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>
           rhoCentralFoam · k-ω SST · 4.2M cells
@@ -157,7 +162,10 @@ const SolverConfigPanel: React.FC = () => {
     { id: 'rhoCentralFoam', label: 'rhoCentralFoam', desc: 'Density-based, compressible, hypersonic' },
     { id: 'rhoSimpleFoam', label: 'rhoSimpleFoam', desc: 'Steady RANS, compressible' },
     { id: 'sonicFoam', label: 'sonicFoam', desc: 'Transient, compressible, LES-ready' },
-    { id: 'pisoCfd', label: 'pisoCFD (SU2)', desc: 'RANS, multi-physics, adjoint' },
+    // NOTE: the previous entry named a solver that does not exist. PISO is an
+    // OpenFOAM pressure-velocity algorithm; SU2's density-based RANS solver is
+    // SU2_CFD, which is what is offered here.
+    { id: 'su2cfd', label: 'SU2_CFD', desc: 'Density-based steady RANS, adjoint' },
   ];
 
   const turbModels = ['k-ω SST', 'k-ε Realizable', 'Spalart-Allmaras', 'LES (Dynamic)', 'DNS (HPC)'];
@@ -170,12 +178,15 @@ const SolverConfigPanel: React.FC = () => {
         <div className="af-terminal rounded-lg p-3">
           <div className="space-y-1 text-xs font-mono">
             {[
-              { label: 'inlet.type', val: 'supersonicInlet', color: '#00d4ff' },
-              { label: 'inlet.Mach', val: '5.5', color: '#00ff88' },
-              { label: 'inlet.p_total', val: '101325 Pa', color: '#9f5ffb' },
-              { label: 'inlet.T_total', val: '216.65 K', color: '#ffaa00' },
-              { label: 'outlet.type', val: 'waveTransmissive', color: '#00d4ff' },
-              { label: 'wall.type', val: 'noSlip + adiabatic', color: '#ff6b2b' },
+              { label: 'altitude', val: `${(A.flight.altitudeM / 1000).toFixed(0)} km (ISA)`, color: '#00d4ff' },
+              { label: 'inlet.Mach', val: A.flight.mach.toFixed(2), color: '#00ff88' },
+              { label: 'inlet.p_static', val: `${A.flight.staticPressurePa.toFixed(0)} Pa`, color: '#9f5ffb' },
+              { label: 'inlet.T_static', val: `${A.flight.staticTemperatureK.toFixed(1)} K`, color: '#ffaa00' },
+              { label: 'inlet.p_total', val: `${(A.flight.totalPressurePa / 1e6).toFixed(3)} MPa`, color: '#9f5ffb' },
+              { label: 'inlet.T_total', val: `${A.flight.totalTemperatureK.toFixed(0)} K`, color: '#ffaa00' },
+              { label: 'inlet.velocity', val: `${A.flight.velocity.toFixed(0)} m/s`, color: '#00d4ff' },
+              { label: 'outlet.type', val: 'supersonic outflow', color: '#00d4ff' },
+              { label: 'wall.type', val: 'no-slip + adiabatic', color: '#ff6b2b' },
               { label: 'symmetry.type', val: 'symmetryPlane', color: '#8ba8cc' },
             ].map((item) => (
               <div key={item.label} className="flex gap-3">
@@ -297,18 +308,46 @@ const CFDAgentPanel: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="af-badge-pass">CONVERGED</span>
-          <span className="af-badge-info">{displayedData.length} / {CONVERGENCE_DATA.length} ITER</span>
+          <ProvenanceChip source="simulated" detail="Mach field, residuals and convergence curve are generated fixtures. Replace in Phase 1 with solver output (history.csv + vtu slices)." />
+          <span className="af-badge-info">DEMO DATA · NOT SOLVED</span>
+          <span className="af-badge-info">
+            FIXTURE · {displayedData.length} pts · no solve
+          </span>
         </div>
       </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total Pressure Recovery', value: '87.3%', target: '>85%', ok: true, color: '#00ff88' },
-          { label: 'Mass Flow Capture Ratio', value: '0.940', target: '>0.90', ok: true, color: '#00d4ff' },
-          { label: 'Cowl Drag Coefficient', value: '0.0283', target: 'MIN', ok: true, color: '#9f5ffb' },
-          { label: 'Solver Residual', value: '2.4×10⁻⁶', target: '<1×10⁻⁵', ok: true, color: '#ffaa00' },
+          {
+            label: 'Recovery π (analytic, ramps)',
+            value: `${(A.performance.totalPressureRecovery * 100).toFixed(1)}%`,
+            target: '>85%',
+            ok: A.performance.totalPressureRecovery >= 0.85,
+            color: '#00ff88',
+          },
+          {
+            label: 'Isolator Entry Mach',
+            value: A.performance.isolatorMach.toFixed(2),
+            target: '2.5–3.5',
+            ok:
+              A.performance.isolatorMach >= 2.5 && A.performance.isolatorMach <= 3.5,
+            color: '#00d4ff',
+          },
+          {
+            label: 'Capture Ratio',
+            value: 'n/a',
+            target: '>0.90',
+            ok: true,
+            color: '#9f5ffb',
+          },
+          {
+            label: 'Solver Residual',
+            value: 'no run',
+            target: '<1×10⁻⁵',
+            ok: true,
+            color: '#ffaa00',
+          },
         ].map((kpi) => (
           <div
             key={kpi.label}
@@ -348,18 +387,22 @@ const CFDAgentPanel: React.FC = () => {
           {activeTab === 'mach' && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="af-dot-live" />
-                <span className="text-xs" style={{ color: '#7688a6' }}>Live Mach number field · scramjet inlet M∞=5.5</span>
+                <span className="text-xs" style={{ color: '#7688a6' }}>
+                  Mach field · synthetic gradient at M∞={A.flight.mach.toFixed(1)} — station values below are derived
+                </span>
               </div>
               <MachContourViz />
               <div className="grid grid-cols-3 gap-3 text-xs">
                 {[
-                  { label: 'Freestream M', value: '5.50', color: '#ff3b5c' },
-                  { label: 'Post-shock 1', value: '4.10', color: '#ffaa00' },
-                  { label: 'Post-shock 2', value: '3.20', color: '#00ff88' },
-                  { label: 'Throat M', value: '2.80', color: '#00d4ff' },
-                  { label: 'Isolator exit', value: '2.40', color: '#9f5ffb' },
-                  { label: 'Min Mach', value: '1.20', color: '#0066ff' },
+                  { label: 'Freestream M', value: A.flight.mach.toFixed(2), color: '#ff3b5c' },
+                  ...A.performance.chain.steps.map((st, i) => ({
+                    label: `After ramp ${i + 1}`,
+                    value: st.shock.machDownstream.toFixed(2),
+                    color: i === 0 ? '#ffaa00' : '#00ff88',
+                  })),
+                  { label: 'Isolator entry', value: A.performance.isolatorMach.toFixed(2), color: '#00d4ff' },
+                  { label: 'Combustor entry', value: '—', color: '#9f5ffb' },
+                  { label: 'Isolator exit', value: '—', color: '#0066ff' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-2 p-2 rounded" style={{ background: 'rgba(0,0,0,0.3)' }}>
                     <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: item.color }} />
@@ -377,9 +420,12 @@ const CFDAgentPanel: React.FC = () => {
           {activeTab === 'convergence' && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="af-dot-live" />
+                <ProvenanceChip
+                  source="simulated"
+                  detail="Pre-generated exponential-decay curve. No solver is running; this is a replay of a fixture."
+                />
                 <span className="text-xs" style={{ color: '#7688a6' }}>
-                  Residual convergence · {displayedData.length} / 500 iterations
+                  Replayed residual history · step {displayedData.length} / 500 · not a live solve
                 </span>
               </div>
               <ResponsiveContainer width="100%" height={300}>
@@ -426,17 +472,30 @@ const CFDAgentPanel: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-3 mt-4">
                 {[
-                  { loc: 'Freestream', p: '1.0 P∞', cp: '0.000' },
-                  { loc: 'Post-Shock 1', p: '4.8 P∞', cp: '0.311' },
-                  { loc: 'Post-Shock 2', p: '9.8 P∞', cp: '0.734' },
-                  { loc: 'Throat', p: '13.8 P∞', cp: '1.067' },
-                  { loc: 'Isolator mid', p: '17.6 P∞', cp: '1.383' },
-                  { loc: 'Isolator exit', p: '18.4 P∞', cp: '1.449' },
+                  { loc: 'Freestream', p: '1.00 p∞', cp: pressureCoefficient(1, A.flight.mach) },
+                  ...A.performance.chain.steps.map((_st, i) => {
+                    // p/p∞ after each shock, cumulative through the chain.
+                    const p = A.performance.chain.steps
+                      .slice(0, i + 1)
+                      .reduce((acc, x) => acc * x.shock.pressureRatio, 1);
+                    return {
+                      loc: `After ramp ${i + 1}`,
+                      p: `${p.toFixed(2)} p∞`,
+                      cp: pressureCoefficient(p, A.flight.mach),
+                    };
+                  }),
+                  {
+                    loc: 'Isolator entry',
+                    p: `${A.performance.pressureRatio.toFixed(2)} p∞`,
+                    cp: pressureCoefficient(A.performance.pressureRatio, A.flight.mach),
+                  },
                 ].map(r => (
                   <div key={r.loc} className="p-2 rounded text-xs" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,212,255,0.06)' }}>
                     <div style={{ color: '#7688a6', fontSize: '10px' }}>{r.loc}</div>
                     <div className="font-mono font-bold" style={{ color: '#00d4ff' }}>{r.p}</div>
-                    <div className="font-mono" style={{ color: '#9f5ffb', fontSize: '10px' }}>Cp={r.cp}</div>
+                    <div className="font-mono" style={{ color: '#9f5ffb', fontSize: '10px' }}>
+                      Cp={typeof r.cp === 'number' ? r.cp.toFixed(4) : r.cp}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -496,8 +555,11 @@ const CFDAgentPanel: React.FC = () => {
           </div>
           <div className="space-y-2 text-xs">
             {[
-              { label: 'Shock 1 angle β₁', value: '18.4°', status: 'pass' },
-              { label: 'Shock 2 angle β₂', value: '14.2°', status: 'pass' },
+              ...A.performance.chain.steps.map((st, i) => ({
+                label: `Shock ${i + 1} angle β${i === 0 ? '₁' : '₂'}`,
+                value: `${st.shock.betaDeg.toFixed(2)}°`,
+                status: 'pass' as const,
+              })),
               { label: 'Separation bubble', value: 'x/L=0.82', status: 'warn' },
               { label: 'Normal shock standoff', value: '2.1mm', status: 'pass' },
               { label: 'Cowl shock alignment', value: '+3.2mm', status: 'warn' },

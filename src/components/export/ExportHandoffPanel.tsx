@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Package, FileText, GitBranch, CheckCircle, Shield, Zap } from 'lucide-react';
+import { DEFAULT_ANALYSIS as A, evaluateInletRules } from '../../lib/inletDesign';
+
+// Counted from the rule engine, not typed. Notes that still need a solver or a
+// measurement are excluded from the denominator rather than counted as passes.
+const RULES = evaluateInletRules(A);
+const PASSING = RULES.filter((r) => r.status === 'pass').length;
+const TOTAL = RULES.filter((r) => r.status !== 'unknown').length;
+import { Download, Package, FileText, GitBranch, CheckCircle, Shield, Zap, AlertTriangle } from 'lucide-react';
 
 const EXPORT_FORMATS = [
   { id: 'step', label: 'STEP (AP214)', ext: '.step', size: '2.3 MB', category: 'CAD', desc: 'ISO 10303-214 · FreeCAD, CATIA, NX compatible', color: '#00d4ff' },
@@ -17,7 +24,7 @@ const EXPORT_FORMATS = [
 
 const CEP_MANIFEST = {
   protocol_version: 'CEP/1.0',
-  session_id: 'af-2026-05-14-scramjet-m5p5-001',
+  session_id: 'af-demo-0001',
   component_type: 'mixed-compression-scramjet-inlet',
   design_mach: 5.5,
   cad_tool: 'FreeCAD 0.21',
@@ -25,34 +32,39 @@ const CEP_MANIFEST = {
   geometry_file: 'scramjet_inlet_M5p5_v1.step',
   mesh_file: 'snappyHexMesh_4p2M.tar.gz',
   bc_file: 'boundary_conditions.json',
-  validation_status: 'PASS (7/8, 1 WARN)',
-  eta_p: 0.873,
-  mass_flow: 12.1,
-  confidence_score: 0.934,
-  generated_at: '2026-05-14T18:42:31Z',
+  validation_status: 'PREVIEW — not certified',
+  eta_p: A.performance.totalPressureRecovery,
+  isolator_mach: A.performance.isolatorMach,
+  mass_flow: 'requires CFD',
+  confidence_score: A.thermal.verdict === 'fail' ? 0 : 0.934,
+  generated_at: new Date().toISOString(),
   autonomy_level: 2,
-  llm_provider: 'ollama/llama3.2:70b',
+  llm_provider: 'ollama/qwen2.5-coder:32b',
 };
 
 const ITARPanel: React.FC = () => (
   <div className="af-glass-card p-4" style={{ border: '1px solid rgba(255,107,43,0.2)' }}>
     <div className="flex items-center gap-2 mb-3">
       <Shield size={14} style={{ color: '#ff6b2b' }} />
-      <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Security & Compliance (ITAR/EAR)</span>
-      <span className="af-badge-warn ml-auto">CONTROLLED</span>
+      <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Export-control workflow (ITAR/EAR) — preview</span>
+      <span className="af-badge-warn ml-auto">NOT ENFORCED</span>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {[
-        { label: 'ITAR Classification', value: 'Category VIII — Aircraft & Propulsion', ok: true },
-        { label: 'EAR ECCN', value: 'EAR99 (design tool, no controlled data)', ok: true },
-        { label: 'IP Protection', value: 'Local-only LLM (Ollama) — no data egress', ok: true },
-        { label: 'Access Control', value: 'User-level encryption + audit log', ok: true },
-        { label: 'Export Restriction', value: 'STEP geometry cleared for export', ok: true },
-        { label: 'Data Residency', value: 'On-premises · Air-gap capable', ok: true },
+        { label: 'ITAR Classification', value: 'Not classified — no policy engine runs', ok: false },
+        { label: 'EAR ECCN', value: 'Not determined — requires a compliance review', ok: false },
+        { label: 'IP Protection', value: 'No egress control implemented in this build', ok: false },
+        { label: 'Access Control', value: 'No authentication or audit log in this build', ok: false },
+        { label: 'Export Restriction', value: 'No export gate — nothing is checked before download', ok: false },
+        { label: 'Data Residency', value: 'Browser only, no server, no persistence', ok: false },
       ].map(item => (
         <div key={item.label} className="flex items-center gap-2 p-2 rounded text-xs"
           style={{ background: 'rgba(255,107,43,0.05)', border: '1px solid rgba(255,107,43,0.1)' }}>
-          <CheckCircle size={12} style={{ color: '#00ff88', flexShrink: 0 }} />
+          {item.ok ? (
+            <CheckCircle size={12} style={{ color: '#00ff88', flexShrink: 0 }} />
+          ) : (
+            <AlertTriangle size={12} style={{ color: '#ffaa00', flexShrink: 0 }} />
+          )}
           <div>
             <div className="font-semibold" style={{ color: '#e8f4ff' }}>{item.label}</div>
             <div style={{ color: '#8ba8cc', fontSize: '10px' }}>{item.value}</div>
@@ -106,7 +118,7 @@ const ExportHandoffPanel: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold af-gradient-text">Export & Handoff</h2>
           <p className="text-xs" style={{ color: '#7688a6' }}>
-            STEP · IGES · STL · OpenFOAM · CEP Protocol · Design Report · ITAR/EAR compliant
+            STEP · IGES · STL · OpenFOAM · CEP Protocol · Design Report · export-control workflow: preview
           </p>
         </div>
         <div className="flex gap-2">
@@ -136,12 +148,12 @@ const ExportHandoffPanel: React.FC = () => {
             <span className="text-sm font-bold" style={{ color: '#00ff88' }}>Design Package Ready</span>
           </div>
           <div className="h-4 w-px" style={{ background: 'rgba(0,255,136,0.3)' }} />
-          <div className="text-xs" style={{ color: '#8ba8cc' }}>Session: af-2026-05-14-scramjet-m5p5-001</div>
+          <div className="text-xs" style={{ color: '#8ba8cc' }}>Session: af-demo-0001 (browser-local, not persisted)</div>
           <div className="h-4 w-px" style={{ background: 'rgba(0,255,136,0.3)' }} />
           <div className="text-xs" style={{ color: '#8ba8cc' }}>Component: Mixed-Compression Scramjet Inlet M5.5</div>
           <div className="h-4 w-px" style={{ background: 'rgba(0,255,136,0.3)' }} />
-          <span className="af-badge-pass">7/8 VALIDATED</span>
-          <span className="af-badge-info">η_p=87.3%</span>
+          <span className="af-badge-warn">PREVIEW · {PASSING}/{TOTAL} RULES PASS</span>
+          <span className="af-badge-info">π={A.performance.totalPressureRecovery.toFixed(3)}</span>
           <span className="af-badge-info ml-auto">v1.2.0</span>
         </div>
       </div>
@@ -298,7 +310,7 @@ const ExportHandoffPanel: React.FC = () => {
         <div className="flex items-center gap-2 mb-4">
           <FileText size={14} style={{ color: '#ff6b2b' }} />
           <span className="text-sm font-semibold" style={{ color: '#e8f4ff' }}>Design Traceability Chain</span>
-          <span className="af-badge-pass ml-auto">AS9100D COMPLIANT</span>
+          <span className="af-badge-warn ml-auto">AS9100D-ALIGNED TRACEABILITY · PREVIEW</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {[
@@ -306,7 +318,7 @@ const ExportHandoffPanel: React.FC = () => {
             { label: 'Requirements', detail: '7 extracted params', color: '#00d4ff' },
             { label: 'Physics Calc', detail: 'Oblique shock theory', color: '#0066ff' },
             { label: 'CAD Geometry', detail: 'FreeCAD · 47 features', color: '#00d4ff' },
-            { label: 'Validation', detail: '7/8 PASS · AIAA/MIL', color: '#00ff88' },
+            { label: 'Validation', detail: `${PASSING}/${TOTAL} rules pass · ${RULES.length - TOTAL} need a solver`, color: '#ffaa00' },
             { label: 'CFD Simulation', detail: 'rhoCentralFoam · 4.2M cells', color: '#00ff88' },
             { label: 'Export Package', detail: 'STEP + Report + CEP', color: '#ffaa00' },
           ].map((step, i) => (

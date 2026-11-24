@@ -40,8 +40,24 @@ describe('computeValidationScore', () => {
     ).toBe(38); // (1 + 0.5) / 4 * 100 = 37.5 -> rounds to 38
   });
 
-  it('matches the scramjet demo data (7 pass, 1 warn -> 94)', () => {
-    expect(computeValidationScore(SCRAMJET_INLET_VALIDATION)).toBe(94);
+  // Before Phase 0 this pinned 94 (7 pass + 1 warn), which was the score of a
+  // fabricated rule set. The rows are now produced by the rule engine: 3 pass,
+  // 3 warn, 1 fail, 2 pending-out-of-8 see inletDesign.test.ts.
+  it('matches the derived scramjet data', () => {
+    const score = computeValidationScore(SCRAMJET_INLET_VALIDATION);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThan(94); // the old fabricated score is gone
+    const passes = SCRAMJET_INLET_VALIDATION.filter((v) => v.status === 'pass').length;
+    const warns = SCRAMJET_INLET_VALIDATION.filter((v) => v.status === 'warn').length;
+    expect(score).toBe(
+      Math.round(((passes + warns * 0.5) / SCRAMJET_INLET_VALIDATION.length) * 100),
+    );
+  });
+
+  it('never scores a PASS for a check that needs CFD or measurement', () => {
+    const pending = SCRAMJET_INLET_VALIDATION.filter((v) => v.status === 'pending');
+    expect(pending.length).toBeGreaterThanOrEqual(2);
+    expect(pending.map((v) => v.confidence)).toEqual(pending.map(() => 0));
   });
 });
 

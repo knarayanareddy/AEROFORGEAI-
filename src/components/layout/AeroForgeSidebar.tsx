@@ -3,8 +3,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Layers, Wind, Box, Share2,
   CheckSquare, TrendingUp, Download, ChevronRight,
-  Cpu, Zap
-} from 'lucide-react';
+  Cpu, Zap, Activity } from 'lucide-react';
 import type { AppSection } from '../../types/aeroforge';
 
 interface SidebarItem {
@@ -24,12 +23,20 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: <LayoutDashboard size={16} />,
   },
   {
+    id: 'phase1-wedge',
+    label: 'Wedge Verification',
+    sublabel: 'Real Euler solve',
+    icon: <Activity size={16} />,
+    phase: 'P1',
+    badge: 'LIVE',
+  },
+  {
     id: 'cad-agent',
     label: 'CAD Agent',
     sublabel: 'NL → Geometry',
     icon: <Layers size={16} />,
     phase: 'P1',
-    badge: 'ACTIVE',
+    badge: 'DEMO',
   },
   {
     id: 'cfd-agent',
@@ -120,7 +127,7 @@ const AeroForgeSidebar: React.FC<AeroForgeSidebarProps> = ({
             <span className="text-xs" style={{ color: '#00ff88' }}>LOCAL</span>
           </div>
         </div>
-        <div className="text-xs" style={{ color: '#7688a6' }}>llama3.2:70b</div>
+        <div className="text-xs" style={{ color: '#7688a6' }}>qwen2.5-coder:32b</div>
         <div className="mt-1.5 af-progress-bar">
           <div className="af-progress-fill" style={{ width: '34%' }} />
         </div>

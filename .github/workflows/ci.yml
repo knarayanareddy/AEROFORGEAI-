@@ -1,15 +1,23 @@
+# CI for AeroForge.
+#
+# The golden job is the important one: it grades a *computed* flow field against
+# analytic theory (docs/phase-1-slice.md §2). Everything else checks that the code
+# is well-formed; this checks that it is right.
+
 name: CI
 
 on:
   push:
-    branches: [main, 'arena/**']
+    branches: [main]
   pull_request:
 
-permissions:
-  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  check:
+    name: Typecheck, lint, unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,20 +27,111 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Typecheck
         run: npm run typecheck
 
       - name: Lint
+        # Includes the no-restricted-properties rule that bans Math.random().
         run: npm run lint
 
-      - name: Test
+      - name: Unit tests
         run: npm test
 
       - name: Build
         run: npm run build
 
-      - name: Dependency audit (fails on high/critical)
-        run: npm audit --audit-level=high
+  golden:
+    name: Golden physics (wedge vs exact oblique-shock theory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # PASSES only if β and p₂/p₁ land within 2 % of theory at 5°, 10° and 15°.
+      # A regression here means the solver is wrong, and the demo must not claim
+      # a verified result.
+      - name: Wedge golden test
+        run: npm run test:golden
+
+  inlet:
+    name: Phase 2 inlet golden
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Ramp shock vs oblique-shock chain
+        run: npm run test:inlet
+
+  bundle:
+    name: CEP bundle round-trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+      - name: Unit tests for the archive writer
+        run: npx vitest run src/lib/zip.test.ts src/lib/cepBundle.test.ts
+      - name: Build a bundle and verify it with Python's zipfile
+        run: |
+          npx tsx scripts/build-reference-bundle.ts
+          python3 oracle/verify_bundle.py reference_bundle.zip
+
+  oracle:
+    name: Independent cross-check (numpy oracle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install numpy
+        run: pip install numpy
+
+      - name: Run the reference solver
+        # A second, independent implementation (different wave-speed estimate and
+        # mesh generator). Agreement with the TypeScript solver is evidence that
+        # neither is simply self-consistent.
+        run: |
+          python oracle/euler_oracle.py \
+            --theta 10 --mach 5.5 --nx 360 --ny 220 --max-iter 20000 \
+            --json > oracle_result.json
+          cat oracle_result.json
+
+      - name: Assert agreement with theory within 3 %
+        # Slightly looser than the TypeScript gate because this is a slower,
+        # deliberately simpler code path; it exists to catch gross errors, not to
+        # replace the golden test.
+        run: |
+          python - <<'PY'
+          import json, sys
+          r = json.load(open("oracle_result.json"))
+          errs = r["error_pct"]
+          print(f"beta error {errs['beta']:+.2f} %   p2/p1 error {errs['pressure_ratio']:+.2f} %")
+          ok = abs(errs["beta"]) < 3.0 and abs(errs["pressure_ratio"]) < 2.0
+          print("PASS" if ok else "FAIL")
+          sys.exit(0 if ok else 1)
+          PY

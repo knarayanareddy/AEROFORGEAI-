@@ -166,6 +166,7 @@ export interface NavigationItem {
 
 export type AppSection =
   | 'dashboard'
+  | 'phase1-wedge'
   | 'cad-agent'
   | 'cfd-agent'
   | 'geometry-engine'

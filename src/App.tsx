@@ -11,6 +11,8 @@ import ValidationEnginePanel from './components/validation/ValidationEnginePanel
 import OptimizationPanel from './components/optimization/OptimizationPanel';
 import ExportHandoffPanel from './components/export/ExportHandoffPanel';
 import type { AppSection } from './types/aeroforge';
+import { DemoBanner } from './components/common/Provenance';
+import { WedgeVerificationPanel } from './components/phase1/WedgeVerificationPanel';
 
 // ── Loading Screen ─────────────────────────────────────────────────────────────
 const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
@@ -20,12 +22,12 @@ const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComple
 
   const bootSteps = [
     'Initializing AeroForge AI kernel...',
-    'Loading aerospace knowledge graph (14,820 nodes)...',
-    'Connecting to Ollama llama3.2:70b (local)...',
-    'Loading FreeCAD geometry engine...',
-    'Initializing OpenFOAM CFD solver interface...',
-    'Loading AIAA standard constraints (2,847 papers)...',
-    'Calibrating validation engine (AS9100D, MIL-E-5007D)...',
+    'Loading demo knowledge-graph placeholders...',
+    'Checking local LLM configuration (Ollama)...',
+    'No CAD kernel attached — geometry is illustrative',
+    'No CFD solver attached — fields are synthetic',
+    'Loading design-point physics (oblique-shock core)...',
+    'Validation rules loaded — run against derived KPIs...',
     'AeroForge AI v1.0.0 — Ready.',
   ];
 
@@ -200,6 +202,7 @@ const SectionRenderer: React.FC<{
 }> = ({ section, onNavigate }) => {
   const sections: Record<AppSection, React.ReactNode> = {
     dashboard: <MissionControlDashboard onNavigate={onNavigate} />,
+    'phase1-wedge': <WedgeVerificationPanel />,
     'cad-agent': <CADAgentPanel />,
     'cfd-agent': <CFDAgentPanel />,
     'geometry-engine': <GeometryEnginePanel />,
@@ -261,6 +264,7 @@ const App: React.FC = () => {
             className="pt-14 pl-56"
             style={{ minHeight: '100vh' }}
           >
+            <DemoBanner />
             <div className="p-5">
               <SectionRenderer
                 section={activeSection}

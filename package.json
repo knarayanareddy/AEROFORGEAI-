@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "AeroForge AI — AI-native aerospace design & simulation platform (NL → CAD → CFD → validated design)",
+  "description": "AeroForge AI \u2014 AI-native aerospace design & simulation platform (NL \u2192 CAD \u2192 CFD \u2192 validated design)",
   "engines": {
     "node": ">=20"
   },
@@ -13,8 +13,12 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --exclude \"**/*.golden.test.ts\"",
+    "test:watch": "vitest",
+    "test:physics": "vitest run src/lib src/data",
+    "test:golden": "vitest run src/lib/wedge.golden.test.ts",
+    "test:all": "vitest run",
+    "test:inlet": "vitest run src/lib/inlet.golden.test.ts"
   },
   "dependencies": {
     "clsx": "2.1.1",
