@@ -1,20 +1,245 @@
 {
-  "_comment": "Shared conformance table. Evaluated against BOTH the Rego (real regopy engine) and the TypeScript mirror. add_error_cases / negative cases exist because a policy that only ever says 'allow' would pass a table of permitted exports.",
-  "cases": [
-    { "id": "civil-ml-allowed", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 3.5 } },
-    { "id": "civil-ml-at-limit", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 4.0 } },
-    { "id": "civil-ml-over-limit", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 4.1 } },
-    { "id": "design-point-m55", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 5.5 } },
-    { "id": "mtcr-nato-with-reviewer", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 2.5, "reviewer": "r.martin" } },
-    { "id": "mtcr-nato-no-reviewer", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 2.5 } },
-    { "id": "mtcr-other", "input": { "destination": "other", "classification": "ECL:MTCR", "mach": 2.5, "reviewer": "r.martin" } },
-    { "id": "mtcr-over-limit", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 3.2, "reviewer": "r.martin" } },
-    { "id": "sanctioned", "input": { "destination": "sanctioned", "classification": "ECL:ML", "mach": 2.0 } },
-    { "id": "no-destination", "input": { "classification": "ECL:ML", "mach": 2.0 } },
-    { "id": "no-destination-mtcr", "input": { "classification": "ECL:MTCR", "mach": 2.0, "reviewer": "r.martin" } },
-    { "id": "unclassified-low", "input": { "destination": "nato", "mach": 2.0 } },
-    { "id": "unclassified-high", "input": { "destination": "nato", "mach": 5.5 } },
-    { "id": "unclassified-exactly-4", "input": { "destination": "nato", "mach": 4.0 } },
-    { "id": "empty-object", "input": { "mach": 0 } }
-  ]
+ "_comment": "Shared conformance table. Evaluated against BOTH the Rego (real regopy engine) and the TypeScript mirror. Every case must assert a category: since Phase 5 a missing category is itself a denial, so the pre-Phase-5 cases would all deny for the wrong reason. The runner fails if the table does not exercise both outcomes.",
+ "cases": [
+  {
+   "id": "civil-ml-allowed",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 3.5
+   }
+  },
+  {
+   "id": "civil-ml-at-limit",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 4.0
+   }
+  },
+  {
+   "id": "civil-ml-over-limit",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 4.1
+   }
+  },
+  {
+   "id": "design-point-m55",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 5.5
+   }
+  },
+  {
+   "id": "mtcr-nato-with-reviewer",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:MTCR",
+    "mach": 2.5,
+    "reviewer": "r.martin"
+   }
+  },
+  {
+   "id": "mtcr-nato-no-reviewer",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:MTCR",
+    "mach": 2.5
+   }
+  },
+  {
+   "id": "mtcr-other",
+   "input": {
+    "category": "none",
+    "destination": "other",
+    "classification": "ECL:MTCR",
+    "mach": 2.5,
+    "reviewer": "r.martin"
+   }
+  },
+  {
+   "id": "mtcr-over-limit",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:MTCR",
+    "mach": 3.2,
+    "reviewer": "r.martin"
+   }
+  },
+  {
+   "id": "sanctioned",
+   "input": {
+    "category": "none",
+    "destination": "sanctioned",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "no-destination",
+   "input": {
+    "category": "none",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "no-destination-mtcr",
+   "input": {
+    "category": "none",
+    "classification": "ECL:MTCR",
+    "mach": 2.0,
+    "reviewer": "r.martin"
+   }
+  },
+  {
+   "id": "unclassified-low",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "unclassified-high",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "mach": 5.5
+   }
+  },
+  {
+   "id": "unclassified-exactly-4",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "mach": 4.0
+   }
+  },
+  {
+   "id": "empty-object",
+   "input": {
+    "category": "none",
+    "mach": 0
+   }
+  },
+  {
+   "id": "cat-missing",
+   "input": {
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-empty-string",
+   "input": {
+    "category": "",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-unknown",
+   "input": {
+    "category": "BOGUS",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-usml4-nato",
+   "input": {
+    "category": "USML-IV",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-usml8-nato",
+   "input": {
+    "category": "USML-VIII",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-usml8-other",
+   "input": {
+    "category": "USML-VIII",
+    "destination": "other",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "cat-ear9a-nato",
+   "input": {
+    "category": "EAR-9A",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 2.0
+   }
+  },
+  {
+   "id": "hypersonic-uncategorised",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "mach": 5.5
+   }
+  },
+  {
+   "id": "hypersonic-with-reviewer",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:ML",
+    "mach": 5.5,
+    "reviewer": "r.martin"
+   },
+   "_note": "ECL:ML at M5.5 also trips the Mach-4 rule; kept as a case proving the reviewer does not override a Mach limit."
+  },
+  {
+   "id": "hypersonic-ear9a-no-reviewer",
+   "input": {
+    "category": "EAR-9A",
+    "destination": "nato",
+    "mach": 5.5
+   }
+  },
+  {
+   "id": "subhypersonic-uncategorised",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "mach": 4.5
+   }
+  },
+  {
+   "id": "hypersonic-none-reviewer-discharges-category-only",
+   "input": {
+    "category": "none",
+    "destination": "nato",
+    "classification": "ECL:MTCR",
+    "mach": 5.5,
+    "reviewer": "r.martin"
+   },
+   "_note": "ECL:MTCR at 5.5 exceeds its 3.0 limit, so still denied; proves limits are not overridden by a reviewer."
+  }
+ ]
 }

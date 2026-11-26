@@ -281,3 +281,60 @@ describe('the old constants are provably wrong', () => {
     expect(Math.abs(wrong - right) / right).toBeGreaterThan(0.2);
   });
 });
+
+describe('rampChain: terminal normal shock', () => {
+  // A real external-compression inlet has a throat normal shock. Omitting it
+  // overstates recovery badly, so it is available but must be asked for.
+  it('defaults to ramps only, preserving existing behaviour', () => {
+    const c = rampChain(5.5, [10, 10]);
+    expect(c.hasTerminalShock).toBe(false);
+    expect(c.totalPressureRecovery).toBeCloseTo(0.764920, 5);
+  });
+
+  it('applies the shock when asked, and says so', () => {
+    const c = rampChain(5.5, [10, 10], 1.4, true);
+    expect(c.hasTerminalShock).toBe(true);
+    expect(c.totalPressureRecovery).toBeCloseTo(0.158760, 5);
+  });
+
+  it('the terminal shock is where most of the loss is', () => {
+    // 0.765 -> 0.159 is a factor of 4.8. If this ever stops being a large
+    // difference, the terminal shock is not being applied.
+    const noTerm = rampChain(5.5, [10, 10]).totalPressureRecovery;
+    const withTerm = rampChain(5.5, [10, 10], 1.4, true).totalPressureRecovery;
+    expect(noTerm / withTerm).toBeGreaterThan(4);
+  });
+
+  it('brings the flow subsonic', () => {
+    const c = rampChain(5.5, [10, 10], 1.4, true);
+    expect(c.machOut).toBeLessThan(1);
+  });
+
+  it('leaves the flow supersonic when omitted', () => {
+    const c = rampChain(5.5, [10, 10]);
+    expect(c.machOut).toBeGreaterThan(1);
+  });
+
+  it('matches the independent Python implementation to 1e-6', () => {
+    // Values from aeroforge/physics/oblique_shock.py (PR #1),
+    // total_pressure_recovery(). Used here as a fixed reference vector, not as
+    // a second oracle: same textbook relation, transcribed separately.
+    expect(rampChain(7.2, [10, 10]).totalPressureRecovery).toBeCloseTo(0.610654, 5);
+    expect(rampChain(7.2, [10, 10], 1.4, true).totalPressureRecovery).toBeCloseTo(0.069895, 5);
+    expect(rampChain(4.655, [8, 12]).totalPressureRecovery).toBeCloseTo(0.832644, 5);
+    expect(rampChain(4.655, [8, 12], 1.4, true).totalPressureRecovery).toBeCloseTo(0.250741, 5);
+  });
+
+  it('does not apply a terminal shock to a detached chain', () => {
+    const c = rampChain(5.5, [30, 30], 1.4, true);
+    expect(c.attached).toBe(false);
+    expect(c.hasTerminalShock).toBe(false);
+  });
+
+  it('reports cumulative pressure including the terminal shock', () => {
+    // p2/p1 across the whole system must be larger with the shock than without.
+    const a = rampChain(5.5, [10, 10]);
+    const b = rampChain(5.5, [10, 10], 1.4, true);
+    expect(b.pressureRatio).toBeGreaterThan(a.pressureRatio);
+  });
+});

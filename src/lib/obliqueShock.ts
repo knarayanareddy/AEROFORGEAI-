@@ -287,6 +287,17 @@ export interface RampChain {
   densityRatio: number;
   /** Cumulative static temperature ratio T/T∞. */
   temperatureRatio: number;
+  /**
+   * True when a terminal normal shock was applied at the throat.
+   *
+   * This is the difference between "recovery across the ramps" and "recovery
+   * into the isolator". For an external-compression inlet the terminal shock is
+   * where most of the loss happens: at M 5.5 with two 10° ramps, recovery is
+   * 0.765 before it and 0.159 after — a factor of 4.8. Reporting the first
+   * number as though it were inlet recovery overstates performance, so the
+   * chain records which one it is.
+   */
+  hasTerminalShock: boolean;
 }
 
 export const EMPTY_CHAIN: RampChain = {
@@ -298,6 +309,7 @@ export const EMPTY_CHAIN: RampChain = {
   totalPressureRecovery: NaN,
   densityRatio: NaN,
   temperatureRatio: NaN,
+  hasTerminalShock: false,
 };
 
 /**
@@ -306,8 +318,19 @@ export const EMPTY_CHAIN: RampChain = {
  *
  * Stops at the first detached shock and reports `attached: false`; partial
  * results up to that point remain in `steps` for diagnostics.
+ *
+ * `terminalNormalShock` appends the throat normal shock that a real
+ * external-compression inlet has. It defaults to **false** so existing callers
+ * keep their current meaning — silently changing it would alter every recovery
+ * number in the app without any test noticing. Pass true for an inlet figure;
+ * `hasTerminalShock` on the result records which was computed.
  */
-export function rampChain(mach: number, turnsDeg: number[], gamma = GAMMA_AIR): RampChain {
+export function rampChain(
+  mach: number,
+  turnsDeg: number[],
+  gamma = GAMMA_AIR,
+  terminalNormalShock = false,
+): RampChain {
   let machNow = mach;
   let pressure = 1;
   let recovery = 1;
@@ -330,6 +353,22 @@ export function rampChain(mach: number, turnsDeg: number[], gamma = GAMMA_AIR): 
     machNow = shock.machDownstream;
   }
 
+  // Terminal normal shock at the throat. Only meaningful while supersonic: a
+  // chain that has already reached M <= 1 has no shock left to stand.
+  let appliedTerminal = false;
+  if (terminalNormalShock && attached && machNow > 1) {
+    const wall = normalShock(machNow, gamma);
+    if (wall.attached) {
+      steps.push({ turnDeg: 90, machIn: machNow, shock: wall });
+      pressure *= wall.pressureRatio;
+      recovery *= wall.totalPressureRatio;
+      density *= wall.densityRatio;
+      temperature *= wall.temperatureRatio;
+      machNow = wall.machDownstream;
+      appliedTerminal = true;
+    }
+  }
+
   return {
     attached,
     steps,
@@ -339,6 +378,7 @@ export function rampChain(mach: number, turnsDeg: number[], gamma = GAMMA_AIR): 
     totalPressureRecovery: attached ? recovery : NaN,
     densityRatio: attached ? density : NaN,
     temperatureRatio: attached ? temperature : NaN,
+    hasTerminalShock: appliedTerminal,
   };
 }
 

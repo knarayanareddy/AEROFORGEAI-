@@ -48,8 +48,20 @@ describe.skipIf(!haveRego)('TypeScript mirror matches the Rego engine', () => {
 
 describe('the mirror stands on its own', () => {
   it('fails closed when input is missing', () => {
-    // Every field absent: no destination, so no export. The default must be deny.
-    expect(evaluateExport({ mach: 0 }).allowed).toBe(false);
+    // Every field absent: no category and no destination, so no export.
+    // The default must be deny; this is the fail-closed baseline.
+    const r = evaluateExport({ mach: 0 });
+    expect(r.allowed).toBe(false);
+    expect(r.denials).toContain('no export-control category asserted; one is required before an export decision');
+  });
+
+  it('fails closed when the category is absent even if everything else is fine', () => {
+    // Before Phase 5 this combination was permitted. It must not be now: the
+    // category is the one field a human has to assert.
+    const r = evaluateExport({ destination: 'nato', classification: 'ECL:ML', mach: 2.0 });
+    expect(r.allowed).toBe(false);
+    expect(r.denials).toHaveLength(1);
+    expect(r.denials[0]).toMatch(/no export-control category asserted/);
   });
 
   it('documents what an unknown classification does', () => {
@@ -61,6 +73,7 @@ describe('the mirror stands on its own', () => {
     // docs/phase-4.md rather than silently papered over with a catch-all rule
     // that would change the Rego's meaning for every real tier.
     const r = evaluateExport({
+      category: 'none',
       destination: 'nato',
       classification: 'SOMETHING_NEW' as unknown as ExportInput['classification'],
       mach: 2,
@@ -73,9 +86,9 @@ describe('the mirror stands on its own', () => {
     // The Phase 2 inlet is Mach 5.5. Under this policy it cannot be exported
     // without a classification review. That is the intended behaviour, and it is
     // asserted so nobody "fixes" it by raising the limit.
-    const r = evaluateExport({ destination: 'nato', classification: 'ECL:ML', mach: 5.5 });
+    const r = evaluateExport({ category: 'none', destination: 'nato', classification: 'ECL:ML', mach: 5.5 });
     expect(r.allowed).toBe(false);
-    expect(r.denials[0]).toMatch(/exceeds its Mach limit/);
+    expect(r.denials.join(' ')).toMatch(/exceeds its Mach limit/);
   });
 });
 

@@ -29,3 +29,24 @@ describe('Phase 4 export-control panel', () => {
     expect(text).toMatch(/chain verifies|CHAIN BROKEN/);
   });
 });
+
+describe('Phase 4 panel: the category field', () => {
+  // The policy now refuses any export with no category asserted, so the panel
+  // must ship in that state rather than pre-selecting "none" and looking
+  // approved. Asserted against rendered markup, not the component's default.
+  it('renders the category selector with NOTHING asserted', () => {
+    expect(text).toContain('Category (required)');
+    expect(text).toContain('not asserted');
+  });
+
+  it('offers exactly the four valid categories', () => {
+    for (const c of ['none', 'USML-IV', 'USML-VIII', 'EAR-9A']) {
+      expect(text).toContain(c);
+    }
+  });
+
+  it('starts denied because no category is asserted', () => {
+    expect(text).toContain('EXPORT DENIED');
+    expect(text).toMatch(/no export-control category asserted/);
+  });
+});
