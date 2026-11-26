@@ -200,13 +200,12 @@ jobs:
           echo "$out" | grep -q "no SU2 run has been verified" || { echo "disclaimer missing"; exit 1; }
           if echo "$out" | grep -qi "^RESULT: PASS"; then echo "synthetic run reported PASS"; exit 1; fi
 
-      - name: The harness must fail cleanly with no SU2 binary
-        run: |
-          if ./scripts/su2-run.sh --check; then
-            echo "prerequisite check passed without an SU2 binary - it should fail"
-            exit 1
-          fi
-          echo "correctly reported missing prerequisites"
+      - name: Harness regression suite
+        # Every case here is a defect found in review that exited 0 or lost
+        # evidence while appearing to work. The suite fails against the code as
+        # first written and passes against the fix, so it is a real guard rather
+        # than a restatement of the current behaviour.
+        run: ./scripts/harness.test.sh
 
       - name: The Slurm scripts must refuse to submit without sbatch
         run: |

@@ -46,15 +46,39 @@ cd "$work"
 
 # Rank count follows the allocation so the script works whether the site packs
 # one task per node or many.
+#
+# set +e around the pipeline is REQUIRED, not defensive: under `set -e` a
+# pipeline whose first command fails aborts the shell immediately, so the
+# `rc=${PIPESTATUS[0]}` line and the copy-back block below would never execute.
+# On sites that purge SLURM_TMPDIR when the job ends, that loses the partial
+# results of a diverged run - exactly the run whose output someone needs.
+set +e
 "${SU2_CFD}" inlet.cfg 2>&1 | tee su2.log
 rc=${PIPESTATUS[0]}
+set -e
 
 echo "finished   $(date -Is)"
 echo "exit       ${rc}"
 
 # Copy results back next to the case. Slurm will purge the scratch on some
-# sites, so this must happen before the script exits.
-if [[ -f history.csv ]]; then cp history.csv "${CASE_DIR}/history.csv"; fi
-if [[ -f restart.csv ]]; then cp restart.csv "${CASE_DIR}/restart.csv"; fi
+# sites, so this must happen before the script exits. This runs whether the
+# solver succeeded or not: a diverged run's history.csv is still evidence.
+copied=0
+for f in history.csv restart.csv su2.log; do
+  if [[ -f "$f" ]]; then
+    # cp may fail on a read-only CASE_DIR; report it rather than dying with only
+    # the solver's exit code, which would hide the real problem.
+    if cp "$f" "${CASE_DIR}/$f" 2>/dev/null; then
+      copied=$((copied + 1))
+    else
+      echo "WARN could not copy $f to ${CASE_DIR}" >&2
+    fi
+  fi
+done
+echo "copied     ${copied} file(s) to ${CASE_DIR}"
+
+if [[ $rc -ne 0 ]]; then
+  echo "solver failed: see ${CASE_DIR}/su2.log" >&2
+fi
 
 exit "$rc"

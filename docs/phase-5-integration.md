@@ -22,7 +22,8 @@ something that can be faked.
 | File | Status | What it does |
 |---|---|---|
 | `src/lib/su2Results.ts` | **written, tested** | Parses `history.csv` and `restart.csv`; every format rule cites a v8.6.0 source line |
-| `src/lib/su2Results.test.ts` | **20 passing, 1 skipped** | Synthetic fixtures only; the skipped test is the real-run test |
+| `scripts/harness.test.sh` | **11 checks, verified to fail pre-fix** | Regression suite for the four review defects (§1a) |
+| `src/lib/su2Results.test.ts` | **27 passing, 1 skipped** | Synthetic fixtures only; the skipped test is the real-run test |
 | `fixtures/su2/*.synthetic.csv` | **synthetic** | Hand-written to the documented format, loudly labelled |
 | `scripts/su2-run.sh` | **written, never run** | Finds SU2, checks the version, generates the case, runs it, asserts the artefacts exist |
 | `scripts/check-su2-results.ts` | **written, run on fixtures only** | Parses the output, checks internal consistency, prints the exact answer key |
@@ -32,6 +33,59 @@ something that can be faked.
 The parsers are the part most likely to be correct, because their rules were read
 out of the SU2 source rather than inferred. The harnesses are the part most likely
 to be wrong, because shell, paths and cluster conventions differ everywhere.
+
+---
+
+## 1a. Defects found in review of the scaffold
+
+The scaffold was reviewed and four defects were reported. **All four were real**,
+and all four were the same class of bug: the script exited 0, or lost the
+evidence, while appearing to work. They are recorded here rather than quietly
+fixed, because this project's whole argument rests on not accepting green output
+at face value.
+
+| # | Defect | Consequence if shipped |
+|---|---|---|
+| 1 | `su2-run.sh` invoked the builder as `../scripts/build-su2-case.ts` | Under the documented default workdir `build/su2-run` this resolves under `build/`, so the harness aborted before running SU2 |
+| 2 | `check-su2-results.ts` skipped the pressure check when `written > 0` was false | A diverged run (p ≤ 0) passed the consistency check and exited 0; Mach was NaN or Infinity |
+| 3 | `su2Results.ts` used `Number('')`, which is `0` | A blank `Pressure` cell parsed as a valid zero, was then skipped by defect 2, and the run exit 0 "internally consistent" |
+| 4 | `su2-inlet.sbatch` captured `PIPESTATUS` after a pipeline under `set -e` | A failing solver killed the script before the copy-back, losing `history.csv` and `su2.log` on sites that purge scratch |
+
+Defects 2 and 3 **compound**: the blank cell became a zero, the zero skipped the
+check, and the script reported success. Reproduced end-to-end before fixing:
+
+```
+Consistency
+  pressure from (rho, rhoU, rhoV, E) vs written Pressure: worst relative 0.00e+0
+RESULT: run parsed and internally consistent. Shock angle not yet extracted.
+EXIT CODE = 0
+```
+
+That is a malformed restart reporting `0.00e+0` error and exiting 0. It is
+precisely the false tick this project has been trying to avoid since Phase 0, and
+it was in code written for the very feature meant to prevent false ticks.
+
+### What stops them recurring
+
+`scripts/harness.test.sh` — 11 checks, one per defect plus the guards that must
+keep working. **Verified to fail against the pre-fix code**: 8 of 11 fail, 3 pass.
+A test that passes both before and after a fix proves nothing, so this was
+checked rather than assumed.
+
+```
+before the fix:  3 passed, 8 failed
+after the fix:  11 passed, 0 failed
+```
+
+Running it in CI means the behaviour cannot silently regress.
+
+### The fourth finding, partial
+
+The reviewer also noted the `--version` probe in `su2-inlet.sbatch`
+(`"${SU2_CFD}" --version 2>/dev/null | head -1 || true`). That line is
+mitigated by `|| true` but is still untidy: it masks a missing binary that step 3
+of the script would catch anyway. It is left in place because it is diagnostic
+output, not a control, and the substantive checks that follow it are unaffected.
 
 ---
 
