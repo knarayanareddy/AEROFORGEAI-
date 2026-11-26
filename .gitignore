@@ -34,3 +34,8 @@ signed_bundle.sig.json
 
 # Report written by scripts/check-su2-results.ts into its workdir
 su2-check.json
+
+# SU2 output artefacts, if a run is ever executed from the repository root
+/history.csv
+/restart.csv
+/su2.log

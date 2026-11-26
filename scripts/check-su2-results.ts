@@ -19,6 +19,7 @@ import {
   convergenceSummary,
   machFromConservative,
   missingEulerFields,
+  nonPositivePressure,
   parseHistoryCsv,
   parseRestartCsv,
   pressureFromConservative,
@@ -82,8 +83,38 @@ if (!args.synthetic) {
 }
 
 // ── Convergence ──────────────────────────────────────────────────────────────
-const hist = parseHistoryCsv(readFileSync(histPath, 'utf8'));
-const conv = convergenceSummary(hist);
+/**
+ * Run a parser and turn a throw into a readable failure.
+ *
+ * The parsers throw with specific messages ("field Pressure is empty", "row 2
+ * has 3 cells"). Letting them escape as an unhandled exception buries that
+ * message under a stack trace, which is exactly what someone debugging a real
+ * run does not need.
+ */
+function parseOrDie<T>(what: string, path: string, fn: (text: string) => T): T {
+  try {
+    return fn(readFileSync(path, 'utf8'));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`FAIL  could not parse ${what} (${path})`);
+    console.error(`      ${msg}`);
+    process.exit(1);
+  }
+}
+
+const hist = parseOrDie('history.csv', histPath, parseHistoryCsv);
+// convergenceSummary throws on a history too short to judge. That is a
+// legitimate parse-stage failure, not a crash, so it gets the same treatment:
+// a readable message and exit 1, never a stack trace.
+const conv = (() => {
+  try {
+    return convergenceSummary(hist);
+  } catch (e) {
+    console.error(`FAIL  history.csv cannot be summarised (${histPath})`);
+    console.error(`      ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+})();
 say('Convergence');
 say(`  final iteration      ${conv.finalIter}`);
 say(`  final rms[Rho]       ${conv.finalLog10Residual.toFixed(3)}  (log10)`);
@@ -95,7 +126,7 @@ if (conv.decadesDropped < 1) {
 }
 
 // ── Restart ──────────────────────────────────────────────────────────────────
-const rest = parseRestartCsv(readFileSync(restPath, 'utf8'));
+const rest = parseOrDie('restart.csv', restPath, parseRestartCsv);
 say('');
 say(`Restart: ${rest.nPoints} points, ${rest.fields.length} fields`);
 
@@ -115,12 +146,42 @@ const mx = rest.byName.get('Momentum_x')!.values;
 const my = rest.byName.get('Momentum_y')!.values;
 const e = rest.byName.get('Energy')!.values;
 
+// A non-positive written pressure means the run diverged, not that there is
+// nothing to check. Skipping it here would let a diverged state through: the
+// Mach calculation below returns Infinity or NaN for p <= 0 and the script
+// would still exit 0 calling itself "internally consistent".
+const badPressure = nonPositivePressure(rest);
+if (badPressure.length > 0) {
+  const shown = badPressure.slice(0, 5).join(', ');
+  const more = badPressure.length > 5 ? ` (+${badPressure.length - 5} more)` : '';
+  console.error(`FAIL  ${badPressure.length} point(s) with non-positive written Pressure: ${shown}${more}`);
+  console.error('      A non-positive pressure is a diverged or malformed state; Mach and the');
+  console.error('      shock extraction are undefined on it. Re-run with a lower CFL_NUMBER.');
+  process.exit(1);
+}
+
 let worstP = 0;
 for (let i = 0; i < rest.nPoints; i++) {
   const p = pressureFromConservative(rho[i], mx[i], my[i], e[i]);
   const written = rest.byName.get('Pressure')?.values[i];
-  if (written !== undefined && written > 0) {
+  if (written !== undefined) {
+    // Guard the divisor before dividing: a NaN or zero written value would
+    // poison worstP into NaN and every comparison against it would be false.
+    if (!(written > 0)) {
+      console.error(`FAIL  written Pressure at point ${i} is not positive (${written})`);
+      process.exit(1);
+    }
     worstP = Math.max(worstP, Math.abs(p - written) / written);
+  }
+}
+
+// The recovered pressure must itself be physical. A NaN here propagates into
+// Mach and into the summary without ever tripping a > comparison.
+for (let i = 0; i < rest.nPoints; i++) {
+  const p = pressureFromConservative(rho[i], mx[i], my[i], e[i]);
+  if (!Number.isFinite(p) || p <= 0) {
+    console.error(`FAIL  pressure recovered from the conservative state at point ${i} is ${p}`);
+    process.exit(1);
   }
 }
 say('');

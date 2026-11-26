@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import {
   EULER_REQUIRED_FIELDS,
   convergenceSummary,
+  nonPositivePressure,
   machFromConservative,
   missingEulerFields,
   parseHistoryCsv,
@@ -84,6 +85,20 @@ describe('history.csv', () => {
   it('refuses an empty file', () => {
     expect(() => parseHistoryCsv('')).toThrow(/empty/);
   });
+
+  it('refuses an interior blank cell instead of reading it as zero', () => {
+    // Number('') === 0, so without an explicit check a missing residual would
+    // parse as a perfectly converged zero.
+    const mid = ['"Inner_Iter",  "rms[Rho]",  "rms[RhoU]"', '1, -2.0, -2.1', '2, , -2.2'].join('\n');
+    expect(() => parseHistoryCsv(mid)).toThrow(/column "rms\[Rho\]" is empty/);
+  });
+
+  it('refuses a truncated final row, by the ragged-row check', () => {
+    // A trailing blank collapses in splitPaddedRow, so this is caught one guard
+    // earlier. Asserted separately so the two rejection paths stay distinct.
+    const tail = ['"Inner_Iter",  "rms[Rho]"', '1, -2.0', '2, '].join('\n');
+    expect(() => parseHistoryCsv(tail)).toThrow(/has 1 cells/);
+  });
 });
 
 describe('restart.csv', () => {
@@ -121,6 +136,43 @@ describe('restart.csv', () => {
 
   it('refuses a restart with no data rows', () => {
     expect(() => parseRestartCsv('"PointID","x"')).toThrow(/at least one row/);
+  });
+
+  it('refuses a blank cell instead of reading it as zero', () => {
+    // Number('') === 0, so without an explicit check a missing Pressure value
+    // parses as a valid zero and the consistency check skips it. That lets a
+    // malformed restart exit 0 claiming to be internally consistent.
+    const blank = '"PointID","x","y"\n0, 0, ';
+    expect(() => parseRestartCsv(blank)).toThrow(/field "y" is empty/);
+  });
+});
+
+describe('non-positive pressure', () => {
+  it('finds no fault in the synthetic fixture', () => {
+    expect(nonPositivePressure(parseRestartCsv(RESTART))).toEqual([]);
+  });
+
+  it('reports the indices of a diverged state', () => {
+    const diverged = [
+      '"PointID","x","y","Density","Momentum_x","Momentum_y","Energy","Pressure"',
+      '0, 0, 0, 0.42, 4.2, 0, 23.675, 1.0',
+      '1, 1, 0, 0.42, 4.2, 0, 23.675, 0.0',
+      '2, 2, 0, 0.42, 4.2, 0, 23.675, -3.0',
+    ].join('\n');
+    expect(nonPositivePressure(parseRestartCsv(diverged))).toEqual([1, 2]);
+  });
+
+  it('is empty when no Pressure column was written', () => {
+    const noP = '"PointID","x","y"\n0, 0, 0';
+    expect(nonPositivePressure(parseRestartCsv(noP))).toEqual([]);
+  });
+
+  it('catches NaN, which a bare "not > 0" comparison would miss', () => {
+    // NaN > 0 is false, so a NaN pressure is reported. A check written as
+    // `p <= 0` would let it through, and then Mach would be NaN.
+    expect(Number.isNaN(Number('nan'))).toBe(true);
+    const bad = '"PointID","x","y","Pressure"\n0, 0, 0, nan';
+    expect(() => parseRestartCsv(bad)).toThrow(/not a finite number/);
   });
 });
 

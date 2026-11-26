@@ -71,6 +71,11 @@ export function parseHistoryCsv(text: string): History {
       throw new Error(`history: row ${li} has ${cells.length} cells, header has ${names.length}`);
     }
     for (let ci = 0; ci < cells.length; ci++) {
+      // Same Number('') === 0 trap as the restart parser: a truncated final
+      // row would otherwise read as a converged zero residual.
+      if (cells[ci] === '') {
+        throw new Error(`history: row ${li} column "${names[ci]}" is empty`);
+      }
       const v = Number(cells[ci]);
       if (!Number.isFinite(v)) {
         throw new Error(`history: row ${li} column "${names[ci]}" is not a finite number: "${cells[ci]}"`);
@@ -205,9 +210,16 @@ export function parseRestartCsv(text: string): Restart {
       throw new Error(`restart: row ${ri + 1} has PointID ${id}, expected ${ri} (file is not in point order)`);
     }
     for (let ci = 0; ci < names.length; ci++) {
-      const v = Number(cells[ci + 1].trim());
+      const raw = cells[ci + 1].trim();
+      // Number('') is 0, so a blank cell would parse as a valid zero. For
+      // Pressure that reads as "no pressure written" and silently skips the
+      // consistency check downstream. Reject the empty string explicitly.
+      if (raw === '') {
+        throw new Error(`restart: row ${ri + 1} field "${names[ci]}" is empty`);
+      }
+      const v = Number(raw);
       if (!Number.isFinite(v)) {
-        throw new Error(`restart: row ${ri + 1} field "${names[ci]}" is not a finite number: "${cells[ci + 1]}"`);
+        throw new Error(`restart: row ${ri + 1} field "${names[ci]}" is not a finite number: "${raw}"`);
       }
       cols[ci][ri] = v;
     }
@@ -215,6 +227,22 @@ export function parseRestartCsv(text: string): Restart {
 
   const fields = names.map((name, i) => ({ name, values: cols[i] }));
   return { nPoints, fields, byName: new Map(fields.map((f) => [f.name, f])) };
+}
+
+/**
+ * Indices whose written Pressure is not strictly positive.
+ *
+ * Returns the offending point indices rather than a boolean so the caller can
+ * say WHERE the state went bad. A non-positive pressure means the run diverged
+ * (or the file is malformed); it is never a state worth doing arithmetic on,
+ * and Mach-from-conservative would return Infinity or NaN for it.
+ */
+export function nonPositivePressure(restart: Restart): number[] {
+  const p = restart.byName.get('Pressure');
+  if (!p) return [];
+  const bad: number[] = [];
+  for (let i = 0; i < restart.nPoints; i++) if (!(p.values[i] > 0)) bad.push(i);
+  return bad;
 }
 
 /** The fields a compressible Euler restart is expected to carry. */

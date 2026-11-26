@@ -14,6 +14,14 @@
 # Exit codes: 0 ok, 2 prerequisites missing, 3 SU2 failed.
 set -euo pipefail
 
+# Resolve the repository root from this script's own location, so the harness
+# works regardless of the --workdir passed. A relative ../scripts path breaks as
+# soon as the workdir is more than one level deep, which the documented default
+# (build/su2-run) already is.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUILDER="${REPO_ROOT}/scripts/build-su2-case.ts"
+CHECKER="${REPO_ROOT}/scripts/check-su2-results.ts"
+
 SU2_BIN="${SU2_BIN:-$(command -v SU2_CFD || true)}"
 # SU2_CFD needs the SU2_RUN path set to find its config templates and the
 # mesh-file tools on some builds. The wrapper passes it through if it is set.
@@ -60,6 +68,17 @@ for tool in npx; do
   if command -v "$tool" >/dev/null 2>&1; then echo "ok       $tool"; else echo "MISSING  $tool"; fail=1; fi
 done
 
+# Check the scripts the harness depends on, by absolute path. Failing here with
+# a clear message beats failing after SU2 has already run.
+for f in "$BUILDER" "$CHECKER"; do
+  if [[ -f "$f" ]]; then
+    echo "ok       $(basename "$f")"
+  else
+    echo "MISSING  $f"
+    fail=1
+  fi
+done
+
 if [[ $NPROCS -gt 1 ]]; then
   if command -v mpiexec >/dev/null 2>&1; then
     echo "ok       mpiexec (will run on $NPROCS ranks)"
@@ -85,9 +104,16 @@ fi
 # ── Build the case and mesh ──────────────────────────────────────────────────
 hr
 echo "Generating the case and mesh from the Phase 3 generators"
-# scripts/build-su2-case.ts writes inlet.cfg and inlet.su2 into the CWD.
+# build-su2-case.ts writes inlet.cfg and inlet.su2 into the CWD, so it is run
+# from the workdir with an absolute script path.
 mkdir -p "$WORKDIR"
-( cd "$WORKDIR" && npx tsx ../scripts/build-su2-case.ts )
+( cd "$WORKDIR" && npx tsx "$BUILDER" ) || {
+  echo "Case generation failed; nothing was run." >&2
+  exit 2
+}
+for f in inlet.cfg inlet.su2; do
+  [[ -f "$WORKDIR/$f" ]] || { echo "MISSING $WORKDIR/$f after generation" >&2; exit 2; }
+done
 
 # ── Run ──────────────────────────────────────────────────────────────────────
 hr
@@ -141,5 +167,5 @@ if [[ $missing -ne 0 ]]; then
   exit 3
 fi
 
-echo "Next: npx tsx scripts/check-su2-results.ts --workdir $WORKDIR"
+echo "Next: npx tsx $CHECKER --workdir $WORKDIR"
 echo "That compares the run against the Phase 2/3 expectations and writes a report."
