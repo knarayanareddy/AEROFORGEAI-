@@ -167,6 +167,55 @@ jobs:
             echo "validator correctly rejected the misspelled option"
           fi
 
+  su2-results:
+    name: SU2 result parsers (synthetic fixtures)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Parser unit tests
+        # These run against hand-written fixtures, not SU2 output. They check the
+        # parser against the format specification in src/lib/su2Results.ts, which
+        # cites v8.6.0 source lines. They do not check that SU2 emits that format.
+        run: npx vitest run src/lib/su2Results.test.ts
+
+      - name: End-to-end check against the synthetic fixtures
+        # Proves the harness (parse -> consistency -> theory comparison) runs.
+        # The script prints "MODE: SYNTHETIC" and refuses to claim a run.
+        run: |
+          npx tsx scripts/check-su2-results.ts             --workdir fixtures/su2 --synthetic             --history fixtures/su2/history.synthetic.csv             --restart fixtures/su2/restart.synthetic.csv
+
+      - name: The synthetic path must not be mistakable for a real run
+        # If someone makes the script default to synthetic, or drops the banner,
+        # this fails. The whole value of the fixtures is that they cannot be cited.
+        run: |
+          out=$(npx tsx scripts/check-su2-results.ts             --workdir fixtures/su2 --synthetic             --history fixtures/su2/history.synthetic.csv             --restart fixtures/su2/restart.synthetic.csv)
+          echo "$out" | grep -q "SYNTHETIC" || { echo "banner missing"; exit 1; }
+          echo "$out" | grep -q "no SU2 run has been verified" || { echo "disclaimer missing"; exit 1; }
+          if echo "$out" | grep -qi "^RESULT: PASS"; then echo "synthetic run reported PASS"; exit 1; fi
+
+      - name: The harness must fail cleanly with no SU2 binary
+        run: |
+          if ./scripts/su2-run.sh --check; then
+            echo "prerequisite check passed without an SU2 binary - it should fail"
+            exit 1
+          fi
+          echo "correctly reported missing prerequisites"
+
+      - name: The Slurm scripts must refuse to submit without sbatch
+        run: |
+          if ./deploy/slurm/submit.sh --dry-run 2>/dev/null; then
+            echo "submit.sh did not refuse without sbatch"
+            exit 1
+          fi
+          echo "correctly refused"
+
   harden:
     name: P4 hardening (Rego, signatures, K8s)
     runs-on: ubuntu-latest

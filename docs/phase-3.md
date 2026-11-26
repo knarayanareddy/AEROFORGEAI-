@@ -3,6 +3,12 @@
 **Status: case and mesh writers validated against SU2 v8.6.0's own source. No SU2
 solution exists, because SU2 could not be executed in this environment.**
 
+> **Where this goes next:** the parsers, run harness and Slurm scripts that turn
+> a real run into a graded result are scaffolded in
+> [`phase-5-integration.md`](./phase-5-integration.md), with a tick-box
+> checklist. Nothing there has been executed either — the gap is unchanged, it
+> is just now navigable.
+
 That distinction is the whole of this document. The previous phases ended with a
 number that could be checked against theory. This one does not, and pretending
 otherwise would be the single most damaging thing this project could do — a
