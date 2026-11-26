@@ -11,7 +11,7 @@ actually backed by something that runs.
 | Item | Status | What does the backing |
 |---|---|---|
 | Rego export policy | **executed** | `regopy` 1.5.2 — OPA's own Rego runtime |
-| TS policy mirror | **conformance-tested** | 15-case table, both implementations, mutation-verified |
+| TS policy mirror | **conformance-tested** | 27-case table, both implementations, mutation-verified |
 | Signed bundles | **cross-verified** | Node → WebCrypto → PyNaCl, three implementations |
 | Hash-chained audit | **tamper-tested** | edit / delete / reorder detection |
 | OIDC + RBAC | **tested with real crypto** | RS256 tokens minted in-test, not stubbed |
@@ -49,7 +49,7 @@ That means two implementations, which is a liability. The mitigation is not care
 it is measurement:
 
 ```
-policy/cases.json          15 cases, 5 allow / 10 deny
+policy/cases.json          27 cases, 7 allow / 20 deny
 policy/export_control.rego the policy
 policy/rego_results.json   verdicts from regopy
 ```
@@ -78,6 +78,59 @@ is recorded here rather than quietly retried.
 The table itself is checked for balance: `opa_eval.py` fails if the cases do not
 produce both verdicts, because a table of permitted exports would pass a naive
 comparison while proving nothing.
+
+The table grew from 15 to 27 cases when the required `category` field landed.
+Adding a required input invalidates every old case at once — all 15 previously
+passed cases began denying for the *new* reason rather than the reason each was
+written to test. The runner caught exactly that (it reported "0 allowed, 15
+denied" and refused), which is why it asserts balance rather than just exit
+code.
+
+### The category field (added after Phase 4 shipped)
+
+The policy originally decided entirely on *destination*, *classification* and
+*Mach*. A Mach 2.5 NACA fin — a plausible USML Cat VIII article — was permitted
+to any NATO destination with no statement at all about whether the airframe
+itself is controlled.
+
+`category` closes that. It is **asserted by a human** and never inferred:
+
+| Value | Meaning | Rule |
+|---|---|---|
+| (absent) | nothing asserted | **denied** |
+| `BOGUS` / `""` | unrecognised | **denied** |
+| `none` | reviewed, not controlled | allowed, subject to the other rules |
+| `USML-IV` | launch vehicles, missiles | **denied at every destination** |
+| `USML-VIII` | aircraft | denied unless destination is `nato` |
+| `EAR-9A` | commercial space / propulsion | allowed, subject to the other rules |
+
+A `none` or `EAR-9A` design above Mach 5 with no named reviewer earns an
+additional denial: asserting "not controlled" at hypersonic speed is a claim
+that needs a name attached.
+
+**A reviewer does not override a Mach limit.** Writing the test for that rule
+surfaced the point: an `ECL:ML` design at Mach 5.5 is still denied by the Mach-4
+ceiling whether or not a reviewer is named, and an `ECL:MTCR` design at 5.5 is
+still denied by its own 3.0 ceiling. The first case written for this rule was
+itself a bad test — it exercised the Mach limit, not the reviewer rule — and was
+kept with a note rather than deleted, with a second case added that isolates what
+it was meant to show.
+
+**Why not keyword classification.** The parallel Python branch (PR #1) inferred
+categories by substring-matching `inlet`/`nozzle`/`scramjet` in a template name.
+Prototyped against this project's own ten templates, it flagged **5 of 10** —
+including `cd_nozzle_bell_rao`, `cd_nozzle_conical` and `min_length_nozzle`,
+three benign rocket-nozzle contours — and silently passed anything whose name
+did not match. A 50 % false-positive rate plus silent misses is worse than no
+classifier, because it trains operators to ignore the output.
+
+**A Rego semantic that cost a round trip.** `not input.category` succeeds only
+when the key is undefined; in Rego a *string is truthy*, so `""` is a defined
+term and the "not asserted" rule does **not** fire for it — the unknown-category
+rule does instead. JavaScript's `!category` treats `""` as absent, giving the
+opposite message. The mirror shipped that bug first; the conformance case
+`cat-empty-string` caught it, which is the case that exists only because
+somebody thought to write it.
 
 ### What the policy does not do
 

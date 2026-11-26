@@ -15,8 +15,11 @@ export interface ExportRequest {
   principal: Principal;
   /** Digest of the bundle being exported, already computed by the caller. */
   digest: string;
-  /** Export-control inputs: destination and classification. */
-  controls: Pick<ExportInput, 'destination' | 'classification' | 'reviewer'>;
+  /**
+   * Export-control inputs. `category` is required: the gate must not invent one,
+   * because inventing it is exactly the inference the policy refuses to make.
+   */
+  controls: Pick<ExportInput, 'category' | 'destination' | 'classification' | 'reviewer'>;
   /** Mach number of the design in the bundle, from the actual run. */
   mach: number;
 }

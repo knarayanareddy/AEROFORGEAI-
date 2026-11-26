@@ -17,7 +17,7 @@ const engineer: Principal = { sub: 'eng-1', roles: ['engineer'] };
 const req = (over: Partial<Parameters<typeof gatedExport>[0]> = {}) => ({
   principal: officer,
   digest: 'c'.repeat(64),
-  controls: { destination: 'nato' as const, classification: 'ECL:ML' as const },
+  controls: { category: 'none', destination: 'nato' as const, classification: 'ECL:ML' as const },
   mach: 3.5,
   ...over,
 });
@@ -70,6 +70,51 @@ describe('happy path', () => {
     // And it must NOT verify against a different bundle's digest.
     const other = await digestOf(new TextEncoder().encode('different bundle'));
     expect((await verifySignature(nodeSigner, out.signature!, other)).valid).toBe(false);
+  });
+});
+
+describe('the category gate', () => {
+  it('refuses an export with no category asserted, even when all else passes', () => {
+    // This is the hole the category field closes: before Phase 5 a Mach 3.5
+    // export to NATO under ECL:ML was permitted with no statement at all about
+    // whether the airframe itself is controlled.
+    return (async () => {
+      const kp = await generateKeyPair();
+      const out = await gatedExport(
+        req({ controls: { destination: 'nato', classification: 'ECL:ML' } }),
+        { now: AT, twoPersonRequired: false, exporterSub: 'officer-1', signingKeyB64u: kp.privateKeyB64u },
+      );
+      expect(out.allowed).toBe(false);
+      expect(out.signature).toBeUndefined();
+      expect(out.reasons.join(' ')).toMatch(/no export-control category asserted/);
+    })();
+  });
+
+  it('refuses a USML Cat IV design at any destination', async () => {
+    const kp = await generateKeyPair();
+    const out = await gatedExport(
+      req({ controls: { category: 'USML-IV', destination: 'nato', classification: 'ECL:ML' } }),
+      { now: AT, twoPersonRequired: false, exporterSub: 'officer-1', signingKeyB64u: kp.privateKeyB64u },
+    );
+    expect(out.allowed).toBe(false);
+    expect(out.reasons.join(' ')).toMatch(/USML Cat IV/);
+  });
+
+  it('permits a USML Cat VIII design to NATO but not elsewhere', async () => {
+    const kp = await generateKeyPair();
+    const opts = { now: AT, twoPersonRequired: false, exporterSub: 'officer-1', signingKeyB64u: kp.privateKeyB64u };
+    const nato = await gatedExport(
+      req({ controls: { category: 'USML-VIII', destination: 'nato', classification: 'ECL:ML' } }),
+      opts,
+    );
+    expect(nato.allowed).toBe(true);
+
+    const other = await gatedExport(
+      req({ controls: { category: 'USML-VIII', destination: 'other', classification: 'ECL:ML' } }),
+      opts,
+    );
+    expect(other.allowed).toBe(false);
+    expect(other.reasons.join(' ')).toMatch(/USML Cat VIII/);
   });
 });
 
@@ -130,7 +175,7 @@ describe('refusals are audited, not just returned', () => {
     // may not export at all is an information disclosure.
     const kp = await generateKeyPair();
     const out = await gatedExport(
-      req({ principal: engineer, controls: { destination: 'sanctioned', classification: 'ECL:ML' } }),
+      req({ principal: engineer, controls: { category: 'none', destination: 'sanctioned', classification: 'ECL:ML' } }),
       { now: AT, twoPersonRequired: false, exporterSub: 'eng-1', signingKeyB64u: kp.privateKeyB64u },
     );
     expect(out.allowed).toBe(false);

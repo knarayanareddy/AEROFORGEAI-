@@ -10,7 +10,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, ShieldAlert, Link2 } from 'lucide-react';
-import { evaluateExport, type Classification } from '../../lib/exportPolicy';
+import { evaluateExport, VALID_CATEGORIES, type Classification, type ExportCategory } from '../../lib/exportPolicy';
 import { AuditLog, verifyChain, type AuditEntry } from '../../lib/auditLog';
 import { ProvenanceChip } from '../common/Provenance';
 
@@ -22,10 +22,21 @@ export const ExportControlPanel: React.FC = () => {
   const [classification, setClassification] = useState<Classification>('ECL:ML');
   const [mach, setMach] = useState(5.5);
   const [reviewer, setReviewer] = useState('');
+  // A category is a human assertion, so the UI starts with NONE asserted and
+  // the policy refuses until one is chosen. Defaulting to 'none' would make the
+  // first render look permitted, which is the wrong first impression.
+  const [category, setCategory] = useState<ExportCategory | ''>('');
 
   const decision = useMemo(
-    () => evaluateExport({ destination, classification, mach, reviewer: reviewer || undefined }),
-    [destination, classification, mach, reviewer],
+    () =>
+      evaluateExport({
+        category: category === '' ? undefined : category,
+        destination,
+        classification,
+        mach,
+        reviewer: reviewer || undefined,
+      }),
+    [category, destination, classification, mach, reviewer],
   );
 
   // Build a real chain from the current decision, rather than displaying a
@@ -54,7 +65,7 @@ export const ExportControlPanel: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [destination, classification, mach, decision]);
+  }, [category, destination, classification, mach, decision]);
 
   return (
     <div className="af-glass-card p-4 space-y-3">
@@ -74,7 +85,19 @@ export const ExportControlPanel: React.FC = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <label className="block">
+          <span className="text-xs" style={{ color: '#8ba8cc' }}>Category (required)</span>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as ExportCategory | '')}
+            className="w-full mt-1 af-input"
+          >
+            <option value="">— not asserted —</option>
+            {VALID_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+
         <label className="block">
           <span className="text-xs" style={{ color: '#8ba8cc' }}>Destination</span>
           <select

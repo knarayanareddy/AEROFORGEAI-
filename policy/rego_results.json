@@ -1,4 +1,49 @@
 {
+ "cat-ear9a-nato": {
+  "allowed": true,
+  "classification": "ECL:ML",
+  "denials": []
+ },
+ "cat-empty-string": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "unknown export-control category ; expected one of none, USML-IV, USML-VIII, EAR-9A"
+  ]
+ },
+ "cat-missing": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "no export-control category asserted; one is required before an export decision"
+  ]
+ },
+ "cat-unknown": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "unknown export-control category BOGUS; expected one of none, USML-IV, USML-VIII, EAR-9A"
+  ]
+ },
+ "cat-usml4-nato": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "USML Cat IV (launch vehicles, missiles) geometry may not be exported by this system"
+  ]
+ },
+ "cat-usml8-nato": {
+  "allowed": true,
+  "classification": "ECL:ML",
+  "denials": []
+ },
+ "cat-usml8-other": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "USML Cat VIII (aircraft) geometry may not be exported to other"
+  ]
+ },
  "civil-ml-allowed": {
   "allowed": true,
   "classification": "ECL:ML",
@@ -28,6 +73,36 @@
   "classification": "UNCLASSIFIED",
   "denials": [
    "no destination supplied; an export decision requires one"
+  ]
+ },
+ "hypersonic-ear9a-no-reviewer": {
+  "allowed": false,
+  "classification": "UNCLASSIFIED",
+  "denials": [
+   "geometry above Mach 5 must be categorised even when classified UNCLASSIFIED",
+   "unclassified geometry above Mach 4 requires a classification review (Mach 5.5)"
+  ]
+ },
+ "hypersonic-none-reviewer-discharges-category-only": {
+  "allowed": false,
+  "classification": "ECL:MTCR",
+  "denials": [
+   "ECL:MTCR exceeds its Mach limit of 3"
+  ]
+ },
+ "hypersonic-uncategorised": {
+  "allowed": false,
+  "classification": "UNCLASSIFIED",
+  "denials": [
+   "geometry above Mach 5 must be categorised even when classified UNCLASSIFIED",
+   "unclassified geometry above Mach 4 requires a classification review (Mach 5.5)"
+  ]
+ },
+ "hypersonic-with-reviewer": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "ECL:ML exceeds its Mach limit of 4"
   ]
  },
  "mtcr-nato-no-reviewer": {
@@ -77,6 +152,13 @@
    "destination is on the sanctioned list"
   ]
  },
+ "subhypersonic-uncategorised": {
+  "allowed": false,
+  "classification": "UNCLASSIFIED",
+  "denials": [
+   "unclassified geometry above Mach 4 requires a classification review (Mach 4.5)"
+  ]
+ },
  "unclassified-exactly-4": {
   "allowed": true,
   "classification": "UNCLASSIFIED",
@@ -86,6 +168,7 @@
   "allowed": false,
   "classification": "UNCLASSIFIED",
   "denials": [
+   "geometry above Mach 5 must be categorised even when classified UNCLASSIFIED",
    "unclassified geometry above Mach 4 requires a classification review (Mach 5.5)"
   ]
  },
