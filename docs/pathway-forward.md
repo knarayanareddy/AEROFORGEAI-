@@ -364,7 +364,26 @@ to close the gap, in [`phase-3.md`](./phase-3.md).
 The isolator itself is still unmodelled. A shock train needs RANS, a wall-resolved
 mesh and a back-pressure outlet — a different problem, not a config change.
 
-### Phase 4
+### Phase 4 — Harden
+
+**Outcome: OIDC/RBAC, OPA export policy, hash-chained audit, signed bundles and
+K8s manifests implemented and checked against independent engines. Slurm not
+started. This is not a security review.**
+
+The claims that are actually backed: the export policy is executed by regopy
+(OPA's own Rego runtime), not simulated, and the browser mirror is
+conformance-tested against it over 15 cases — including on the denial message
+text. Ed25519 signatures are produced in Node, verified in WebCrypto and again in
+PyNaCl, with a negative control. The audit chain's three failure modes are
+tested, and so is the one it does *not* detect. The K8s manifests are validated
+against real 1.29 schemas and the validator is probed with mutations.
+
+The claims that are not backed: the export thresholds are invented placeholders,
+nothing has been applied to a cluster, there is no key management or session
+management, and none of it constitutes a security review. Full record in
+[`phase-4.md`](./phase-4.md).
+
+### Closing note
 
 As the roadmap table above. Two sequencing notes I would add:
 

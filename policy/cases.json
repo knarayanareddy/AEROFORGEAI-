@@ -1,0 +1,20 @@
+{
+  "_comment": "Shared conformance table. Evaluated against BOTH the Rego (real regopy engine) and the TypeScript mirror. add_error_cases / negative cases exist because a policy that only ever says 'allow' would pass a table of permitted exports.",
+  "cases": [
+    { "id": "civil-ml-allowed", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 3.5 } },
+    { "id": "civil-ml-at-limit", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 4.0 } },
+    { "id": "civil-ml-over-limit", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 4.1 } },
+    { "id": "design-point-m55", "input": { "destination": "nato", "classification": "ECL:ML", "mach": 5.5 } },
+    { "id": "mtcr-nato-with-reviewer", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 2.5, "reviewer": "r.martin" } },
+    { "id": "mtcr-nato-no-reviewer", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 2.5 } },
+    { "id": "mtcr-other", "input": { "destination": "other", "classification": "ECL:MTCR", "mach": 2.5, "reviewer": "r.martin" } },
+    { "id": "mtcr-over-limit", "input": { "destination": "nato", "classification": "ECL:MTCR", "mach": 3.2, "reviewer": "r.martin" } },
+    { "id": "sanctioned", "input": { "destination": "sanctioned", "classification": "ECL:ML", "mach": 2.0 } },
+    { "id": "no-destination", "input": { "classification": "ECL:ML", "mach": 2.0 } },
+    { "id": "no-destination-mtcr", "input": { "classification": "ECL:MTCR", "mach": 2.0, "reviewer": "r.martin" } },
+    { "id": "unclassified-low", "input": { "destination": "nato", "mach": 2.0 } },
+    { "id": "unclassified-high", "input": { "destination": "nato", "mach": 5.5 } },
+    { "id": "unclassified-exactly-4", "input": { "destination": "nato", "mach": 4.0 } },
+    { "id": "empty-object", "input": { "mach": 0 } }
+  ]
+}

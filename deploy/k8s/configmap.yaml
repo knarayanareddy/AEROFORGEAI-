@@ -1,0 +1,13 @@
+# The static bundle is mounted from a ConfigMap here for illustration. A real
+# deployment would bake it into the image or serve it from a CDN; mounting a
+# 1 MB single-file app through ConfigMap is a demo convenience, and the size
+# limit (1 MiB per object) is why the note exists rather than a silent surprise.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aeroforge-site
+  namespace: aeroforge
+data:
+  index.html: |
+    <!-- placeholder: replaced at deploy time by the built single-file bundle -->
+    <!doctype html><title>AeroForge</title>

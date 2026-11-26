@@ -27,3 +27,7 @@ docs/artifacts/*
 inlet.su2
 inlet.cfg
 broken.cfg
+
+# Signed bundle produced by scripts/sign-bundle.ts (ephemeral key)
+signed_bundle.zip
+signed_bundle.sig.json

@@ -13,6 +13,7 @@ import ExportHandoffPanel from './components/export/ExportHandoffPanel';
 import type { AppSection } from './types/aeroforge';
 import { DemoBanner } from './components/common/Provenance';
 import { WedgeVerificationPanel } from './components/phase1/WedgeVerificationPanel';
+import { ExportControlPanel } from './components/phase1/ExportControlPanel';
 
 // ── Loading Screen ─────────────────────────────────────────────────────────────
 const AeroForgeLoadingScreen: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
@@ -209,7 +210,12 @@ const SectionRenderer: React.FC<{
     'knowledge-graph': <KnowledgeGraphPanel />,
     validation: <ValidationEnginePanel />,
     optimization: <OptimizationPanel />,
-    export: <ExportHandoffPanel />,
+    export: (
+      <div className="space-y-4">
+        <ExportControlPanel />
+        <ExportHandoffPanel />
+      </div>
+    ),
   };
 
   return (
