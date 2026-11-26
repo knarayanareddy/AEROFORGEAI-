@@ -210,9 +210,12 @@ the backend the later roadmap phases imply. It exists because the P4 item names
 K8s, and a manifest that pretended to run a service which does not exist would be
 worse than none. In particular:
 
-- The ConfigMap holding `index.html` is a demo convenience. Kubernetes caps a
-  ConfigMap at 1 MiB and the built bundle is ~994 kB, so this only just fits; a
-  real deployment would bake the bundle into the image or serve it from a CDN.
+- The ConfigMap holding `index.html` is a demo convenience **and it is close to
+  failing**. Kubernetes caps a ConfigMap object at 1 MiB and the built bundle is
+  1,001,956 bytes (978.5 KiB, 0.956 MiB) — about 47 KiB of headroom. The next
+  feature that grows the bundle will break this manifest, and the failure will
+  surface at `kubectl apply`, not in CI. A real deployment would bake the bundle
+  into the image or serve it from a CDN; this is neither.
 - There is no Ingress, no TLS, no HPA, no NetworkPolicy, no PodDisruptionBudget.
 - The image is a stock `nginx-unprivileged`; nothing here has been applied to a
   cluster, and `kubernetes-validate` checks structure, not cluster behaviour.
