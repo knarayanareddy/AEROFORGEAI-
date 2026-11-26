@@ -265,7 +265,7 @@ worse than none. In particular:
 
 - The ConfigMap holding `index.html` is a demo convenience **and it is close to
   failing**. Kubernetes caps a ConfigMap object at 1 MiB and the built bundle is
-  1,001,956 bytes (978.5 KiB, 0.956 MiB) — about 47 KiB of headroom. The next
+  1,003,378 bytes (979.9 KiB, 0.957 MiB) — about 44 KiB of headroom, down from 47. The next
   feature that grows the bundle will break this manifest, and the failure will
   surface at `kubectl apply`, not in CI. A real deployment would bake the bundle
   into the image or serve it from a CDN; this is neither.
