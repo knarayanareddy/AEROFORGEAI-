@@ -18,7 +18,10 @@
     "test:physics": "vitest run src/lib src/data",
     "test:golden": "vitest run src/lib/wedge.golden.test.ts",
     "test:all": "vitest run",
-    "test:inlet": "vitest run src/lib/inlet.golden.test.ts"
+    "test:inlet": "vitest run src/lib/inlet.golden.test.ts",
+    "policy:check": "python3 oracle/opa_eval.py --out policy/rego_results.json",
+    "k8s:check": "python3 oracle/validate_k8s.py deploy/k8s/*.yaml",
+    "sign:check": "npx tsx scripts/sign-bundle.ts && python3 oracle/verify_signature.py signed_bundle.zip signed_bundle.sig.json"
   },
   "dependencies": {
     "clsx": "2.1.1",

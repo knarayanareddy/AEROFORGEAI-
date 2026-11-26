@@ -1,0 +1,97 @@
+{
+ "civil-ml-allowed": {
+  "allowed": true,
+  "classification": "ECL:ML",
+  "denials": []
+ },
+ "civil-ml-at-limit": {
+  "allowed": true,
+  "classification": "ECL:ML",
+  "denials": []
+ },
+ "civil-ml-over-limit": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "ECL:ML exceeds its Mach limit of 4"
+  ]
+ },
+ "design-point-m55": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "ECL:ML exceeds its Mach limit of 4"
+  ]
+ },
+ "empty-object": {
+  "allowed": false,
+  "classification": "UNCLASSIFIED",
+  "denials": [
+   "no destination supplied; an export decision requires one"
+  ]
+ },
+ "mtcr-nato-no-reviewer": {
+  "allowed": false,
+  "classification": "ECL:MTCR",
+  "denials": [
+   "MTCR-classified exports require a named reviewer"
+  ]
+ },
+ "mtcr-nato-with-reviewer": {
+  "allowed": true,
+  "classification": "ECL:MTCR",
+  "denials": []
+ },
+ "mtcr-other": {
+  "allowed": false,
+  "classification": "ECL:MTCR",
+  "denials": [
+   "MTCR-classified geometry may not be exported to other"
+  ]
+ },
+ "mtcr-over-limit": {
+  "allowed": false,
+  "classification": "ECL:MTCR",
+  "denials": [
+   "ECL:MTCR exceeds its Mach limit of 3"
+  ]
+ },
+ "no-destination": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "no destination supplied; an export decision requires one"
+  ]
+ },
+ "no-destination-mtcr": {
+  "allowed": false,
+  "classification": "ECL:MTCR",
+  "denials": [
+   "no destination supplied; an export decision requires one"
+  ]
+ },
+ "sanctioned": {
+  "allowed": false,
+  "classification": "ECL:ML",
+  "denials": [
+   "destination is on the sanctioned list"
+  ]
+ },
+ "unclassified-exactly-4": {
+  "allowed": true,
+  "classification": "UNCLASSIFIED",
+  "denials": []
+ },
+ "unclassified-high": {
+  "allowed": false,
+  "classification": "UNCLASSIFIED",
+  "denials": [
+   "unclassified geometry above Mach 4 requires a classification review (Mach 5.5)"
+  ]
+ },
+ "unclassified-low": {
+  "allowed": true,
+  "classification": "UNCLASSIFIED",
+  "denials": []
+ }
+}

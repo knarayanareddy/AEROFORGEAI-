@@ -167,6 +167,50 @@ jobs:
             echo "validator correctly rejected the misspelled option"
           fi
 
+  harden:
+    name: P4 hardening (Rego, signatures, K8s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+      - name: Install the policy and crypto verifiers
+        run: pip install regopy pynacl kubernetes-validate pyyaml
+
+      - name: Evaluate the export policy with a real Rego engine
+        # regopy is OPA's Rego runtime, not a simulation. Its output is what the
+        # TypeScript mirror is compared against in the next step's test run.
+        run: npm run policy:check
+
+      - name: TypeScript mirror must agree with the Rego
+        run: npx vitest run src/lib/exportPolicy.conformance.test.ts
+
+      - name: Sign a bundle and verify it with PyNaCl
+        # Three independent implementations: Node signs, PyNaCl verifies, and the
+        # verifier's negative control proves it is not accepting everything.
+        run: npm run sign:check
+
+      - name: Validate the Kubernetes manifests against real schemas
+        run: npm run k8s:check
+
+      - name: Reject a malformed manifest
+        run: |
+          cp deploy/k8s/deployment.yaml /tmp/d.yaml
+          sed -i 's/^  replicas: 2/  replicas: "two"/' /tmp/d.yaml
+          if python3 oracle/validate_k8s.py /tmp/d.yaml; then
+            echo "K8s validator accepted an invalid manifest - check is not working"
+            exit 1
+          else
+            echo "K8s validator correctly rejected a string replica count"
+          fi
+
   oracle:
     name: Independent cross-check (numpy oracle)
     runs-on: ubuntu-latest
