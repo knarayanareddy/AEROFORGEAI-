@@ -383,6 +383,28 @@ nothing has been applied to a cluster, there is no key management or session
 management, and none of it constitutes a security review. Full record in
 [`phase-4.md`](./phase-4.md).
 
+### Phase 5 — Integration (scaffolded, not executed)
+
+The two unbacked rows in the roadmap are "no SU2 solution" and "Slurm has no
+cluster". Both now have infrastructure and neither is closed.
+
+**What exists:** parsers for `history.csv` and `restart.csv` whose format rules
+each cite a v8.6.0 source line; a run harness that checks the SU2 version,
+generates the case, runs it and asserts the artefacts; a grading script that
+cross-checks the restart's pressure against the conservative state and prints
+the exact answer key; a Slurm batch script and submit wrapper.
+
+**What does not exist:** an executed run. The parsers are tested against
+hand-written fixtures that are labelled SYNTHETIC in the filename, in the file's
+first line, in the README and in the script's banner. CI asserts that banner is
+present and that the script never reports PASS on synthetic input.
+
+The outstanding work is enumerated with a tick-box checklist in
+[`phase-5-integration.md`](./phase-5-integration.md) §7. The one genuinely
+unwritten piece is the shock extraction — the SU2 restart is a flat point list
+while `extractWedgeShock` expects a structured grid — and §4 states why that was
+not guessed at.
+
 ### Closing note
 
 As the roadmap table above. Two sequencing notes I would add:
